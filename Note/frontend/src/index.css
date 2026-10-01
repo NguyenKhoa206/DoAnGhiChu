@@ -1,0 +1,18 @@
+@import './styles/global.css';
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-main, #f8f9fa);
+  color: var(--text-main, #212529);
+  overflow-x: hidden;
+}
+
+.app-container {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 100vh;
+}

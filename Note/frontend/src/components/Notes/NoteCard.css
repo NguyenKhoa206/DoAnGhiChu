@@ -1,0 +1,107 @@
+.note-card {
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+}
+
+.note-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-color, #2463eb);
+}
+
+/* Kiểu riêng cho Ghi chú riêng tư */
+.note-card.private-card {
+  border-left: 4px solid var(--primary-color);
+  background-color: var(--bg-card, #ffffff);
+}
+
+.note-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main, #212529);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.private-icon {
+  font-size: 0.95rem;
+}
+
+.note-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.note-card:hover .note-card-actions {
+  opacity: 1;
+}
+
+.btn-card-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-card-action:hover {
+  background-color: var(--bg-main, #f5f7fa);
+}
+
+.note-card-body {
+  flex: 1;
+}
+
+.note-card-excerpt {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.app-layout.dark .note-card-excerpt {
+  color: var(--text-muted);
+}
+
+.note-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px dashed var(--border-color, #e9ecef);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.note-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}.note-card { box-shadow: none; border-radius: 14px; }
+.note-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.note-card-title { padding: 0; min-width: 0; background: transparent; border: 0; color: var(--text-main); font-size: .92rem; font-weight: 600; text-align: left; cursor: pointer; }
+.btn-card-action { display: inline-grid; place-items: center; }

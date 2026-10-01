@@ -1,0 +1,289 @@
+/* ==========================================================================
+   1. HỆ THỐNG BIẾN TOÀN CỤC (GLOBAL VARIABLES & THEME PREFERENCES)
+   ========================================================================== */
+:root {
+  /* Dynamic Primary Color (Màu chủ đạo thay đổi linh hoạt qua AppContext) */
+  --primary-color: #2463eb;
+  --primary-hover: color-mix(in srgb, var(--primary-color) 84%, #17243b);
+  --primary-active: color-mix(in srgb, var(--primary-color) 74%, #17243b);
+  --primary-light: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  --primary-shadow: color-mix(in srgb, var(--primary-color) 22%, transparent);
+
+  /* Font System */
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+  --font-mono: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Spacing & Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Transition Durations */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Theme Light (Chế độ giao diện Sáng) */
+:root,
+:root.light,
+html.light {
+  color-scheme: light;
+  --accent-text: var(--primary-color);
+  --bg-main: #f8faff;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1f5fd;
+  --bg-hover: #edf3ff;
+  
+  --text-main: #17243b;
+  --text-muted: #65738a;
+  --text-light: #738198;
+
+  --border-color: #e5ebf4;
+  --border-darker: #d4dff0;
+  
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.12);
+  
+  --overlay-bg: rgba(0, 0, 0, 0.45);
+  --note-image-overlay: rgba(255, 255, 255, .82);
+}
+
+/* Theme Dark (Chế độ giao diện Tối) */
+:root.dark,
+html.dark {
+  color-scheme: dark;
+  --accent-text: color-mix(in srgb, var(--primary-color) 72%, #edf3ff);
+  --bg-main: #101827;
+  --bg-card: #182235;
+  --bg-subtle: #1c2940;
+  --bg-hover: #24334d;
+  
+  --text-main: #edf3ff;
+  --text-muted: #abbad1;
+  --text-light: #91a3be;
+
+  --border-color: #2c3b53;
+  --border-darker: #40516d;
+  
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.5);
+  
+  --overlay-bg: rgba(0, 0, 0, 0.75);
+  --note-image-overlay: rgba(16, 24, 39, .82);
+}
+
+/* ==========================================================================
+   2. RESET BAN ĐẦU (CSS RESET & BASE ELEMENTS)
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  width: 100%;
+  min-height: 100vh;
+  font-family: var(--font-family);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Typography Base */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ==========================================================================
+   3. CÁC THÀNH PHẦN NÚT BẤM & FORM DÙNG CHUNG
+   ========================================================================== */
+
+/* Input Controls */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* User-selected paper colors and images stay readable independently of the surrounding theme. */
+:is(.note-card, .calendar-note-card, .rich-content-field, .private-note-textarea).custom-paper {
+  --text-main: #17243b;
+  --text-muted: #65738a;
+  --note-image-overlay: rgba(255, 255, 255, .82);
+}
+
+/* Buttons Base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px var(--primary-shadow);
+}
+
+.btn-secondary {
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.btn-danger {
+  background-color: #d32f2f;
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c62828;
+}
+
+button:disabled, .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   4. THÀNH PHẦN MODAL OVERLAY & ANIMATIONS
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+  animation: fadeIn var(--transition-fast);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-darker);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Shared controls across the personal notebook. */
+.app-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; }
+button:disabled { cursor: default; opacity: .55; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--primary-shadow); outline-offset: 3px; }
+.main-content, .sidebar-nav, .directory-table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-darker) transparent; }
+html[data-density=compact] .nav-item { min-height: 34px; padding-top: 5px; padding-bottom: 5px; }
+html[data-density=compact] .directory-table td { padding-top: 11px; padding-bottom: 11px; }
+html[data-density=compact] .directory-card { padding: 16px; }
+html[data-density=compact] .directory-card-grid, html[data-density=compact] .note-grid { gap: 12px; }
+html[data-density=compact] .note-card { padding: 14px; }
+html[data-density=compact] .private-note-table td { padding-top: 10px; padding-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

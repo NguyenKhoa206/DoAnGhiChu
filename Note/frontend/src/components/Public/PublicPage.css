@@ -1,0 +1,58 @@
+.public-page {
+  --public-blue: var(--primary-color, #2463eb);
+  --public-blue-hover: var(--primary-hover);
+  --public-blue-soft: #edf3ff;
+  --public-ink: #17243b;
+  --public-muted: #65738a;
+  --public-border: #e5ebf4;
+  /* San Francisco is supplied by the Apple system; other platforms use their native sans-serif. */
+  --public-font: var(--font-family);
+  --text-main: var(--public-ink);
+  --text-muted: var(--public-muted);
+  --bg-main: #ffffff;
+  --bg-card: #ffffff;
+  --border-color: var(--public-border);
+  min-height: 100vh;
+  min-height: 100svh;
+  width: 100%;
+  color: var(--public-ink);
+  background: #ffffff;
+  color-scheme: light;
+  font-family: var(--public-font);
+  letter-spacing: -.015em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.public-page h1, .public-page h2, .public-page h3, .public-page p { color: inherit; }
+.public-page button, .public-page input { font-family: var(--public-font); }
+.public-page a { text-decoration: none; }
+.public-page :is(a, button):focus-visible { outline: 3px solid #8cb2ff; outline-offset: 4px; }
+.public-page ::selection { color: #143671; background: #dce8ff; }
+.public-icon { flex: 0 0 auto; vertical-align: middle; }
+
+.public-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text-main); flex-shrink: 0; font-family: var(--font-family); }
+.public-brand:hover { color: var(--text-main); }
+.public-brand-mark { display: grid; place-items: center; width: 41px; height: 43px; border-radius: 13px; color: #fff; background: var(--primary-color); box-shadow: 0 4px 10px var(--primary-shadow); font-size: .7rem; font-weight: 800; letter-spacing: -.025em; }
+.public-brand-mark svg { width: 24px; height: 24px; }
+.public-brand-name { font-size: 1.45rem; font-weight: 750; line-height: 1.15; letter-spacing: -.045em; }
+.public-brand-name > span { display: block; margin-top: 4px; color: var(--text-muted); font-size: .65rem; font-weight: 500; letter-spacing: .015em; }
+
+.public-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 22px; border: 1px solid transparent; border-radius: 12px; font-size: .9rem; font-weight: 650; line-height: 1.3; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.public-button--primary { color: #fff; background: var(--public-blue); box-shadow: 0 6px 16px #2463eb18; }
+.public-button--primary:hover:not(:disabled) { color: #fff; background: var(--public-blue-hover); box-shadow: 0 9px 20px #2463eb25; transform: translateY(-1px); }
+.public-button--secondary { color: var(--public-ink); background: #fff; border-color: #dce4f0; }
+.public-button--secondary:hover:not(:disabled) { color: var(--public-blue); background: #f7faff; border-color: #bad0fa; transform: translateY(-1px); }
+.public-button--quiet { color: #42516a; background: transparent; }
+.public-button--quiet:hover:not(:disabled) { color: var(--public-blue); background: var(--public-blue-soft); }
+.public-button:disabled { cursor: wait; }
+.public-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--public-blue); font-size: .75rem; font-weight: 650; letter-spacing: .035em; }
+.public-eyebrow-dot { width: 6px; height: 6px; background: var(--public-blue); border-radius: 50%; box-shadow: 0 0 0 4px #2463eb0b; }
+.public-text-link { color: var(--public-blue); font-weight: 650; }
+.public-text-link:hover { color: var(--public-blue-hover); text-decoration: underline; text-underline-offset: 3px; }
+.public-spinner { width: 17px; height: 17px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: public-spin .7s linear infinite; }
+
+@keyframes public-spin { to { transform: rotate(360deg); } }
+@keyframes public-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .public-page *, .public-page *::before, .public-page *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

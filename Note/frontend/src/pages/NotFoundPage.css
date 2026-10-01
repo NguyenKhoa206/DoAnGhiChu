@@ -1,0 +1,80 @@
+.not-found-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-main, #f8f9fa);
+  padding: 20px;
+  text-align: center;
+}
+
+.not-found-content {
+  max-width: 480px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 16px;
+  padding: 40px 30px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.error-code {
+  font-size: 4rem;
+  font-weight: 900;
+  color: var(--accent-text, #2463eb);
+  line-height: 1;
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin: 16px 0;
+}
+
+.not-found-content h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  color: var(--text-main, #212529);
+}
+
+.not-found-content p {
+  margin: 0 0 28px 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.not-found-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-go-back {
+  padding: 10px 18px;
+  background-color: var(--bg-main, #f1f3f5);
+  border: 1px solid var(--border-color, #ccc);
+  color: var(--text-main, #333333);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-go-back:hover {
+  background-color: #e9ecef;
+}
+
+.btn-go-home {
+  padding: 10px 18px;
+  background-color: var(--primary-color, #2463eb);
+  border: none;
+  color: #ffffff;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn-go-home:hover {
+  opacity: 0.9;
+}

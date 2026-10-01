@@ -1,0 +1,121 @@
+.private-auth-modal {
+  background-color: var(--bg-card, #ffffff);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.private-auth-modal .modal-header {
+  padding: 16px 20px;
+  background-color: var(--bg-main, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.private-auth-modal .modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-main, #212529);
+}
+
+.private-auth-modal .modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.auth-error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border-left: 4px solid #d32f2f;
+}
+
+.private-auth-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.private-auth-modal label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main, #333333);
+}
+
+.private-auth-modal input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-main, #333333);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.private-auth-modal input:focus {
+  border-color: var(--primary-color, #2463eb);
+}
+
+.private-auth-modal .modal-footer {
+  padding: 12px 20px 20px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.private-auth-modal .btn-primary {
+  background-color: var(--primary-color, #2463eb);
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.private-auth-modal .btn-primary:hover {
+  opacity: 0.9;
+}
+
+.private-auth-modal .btn-secondary {
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.private-auth-modal .btn-secondary:hover {
+  background-color: var(--bg-hover);
+}
