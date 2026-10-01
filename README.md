@@ -40,7 +40,6 @@ Giao diện gửi yêu cầu đến backend qua Axios. Các API quản lý dữ 
 ### Tài khoản và hồ sơ
 
 - Đăng ký, đăng nhập và đăng xuất.
-- Duy trì phiên đăng nhập trong trình duyệt.
 - Cập nhật tên hiển thị, email và ảnh đại diện.
 - Đổi mật khẩu tài khoản.
 - Cài đặt và đổi mật khẩu riêng cho vùng ghi chú riêng tư.
