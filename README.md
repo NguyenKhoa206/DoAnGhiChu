@@ -1,4 +1,4 @@
-# HKT — Ứng dụng quản lý ghi chú
+# HKT — Ứng dụng ghi chú
 
 **HKT** là ứng dụng ghi chú cá nhân trên web, được xây dựng bằng **React + Vite** và **Node.js + Express**. Ứng dụng hỗ trợ quản lý ghi chú theo chủ đề, soạn thảo văn bản có định dạng, chèn ảnh, đính kèm tệp, xem lịch, bảo vệ ghi chú riêng tư và xuất nội dung ra Word hoặc TXT.
 
