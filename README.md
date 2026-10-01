@@ -404,7 +404,7 @@ Mở **terminal thứ nhất** tại thư mục gốc repository. Ví dụ dư�
 chạy backend
 ~~~powershell
 cd Note/server
-npm i
+npm i "NEU CHUA CO THU MUC node_modules"
 npm start
 ~~~
 
@@ -420,7 +420,7 @@ Mở **terminal thứ hai** tại thư mục gốc repository:
 chạy giao diện
 ~~~powershell
 cd Note/frontend
-npm i
+npm i "NEU CHUA CO THU MUC node_modules"
 npm run dev
 ~~~
 
