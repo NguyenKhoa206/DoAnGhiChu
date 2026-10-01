@@ -401,17 +401,11 @@ Nếu tải ZIP từ GitHub, giải nén và mở terminal tại thư mục ch�
 ### Bước 2: cài đặt và chạy backend
 
 Mở **terminal thứ nhất** tại thư mục gốc repository. Ví dụ dưới đây dùng **PowerShell trên Windows**:
-
+chạy backend
 ~~~powershell
 cd Note/server
-npm ci
-if (!(Test-Path .env)) { Copy-Item .env.example .env }
-~~~
-
-Mở file `Note/server/.env`, kiểm tra cổng và thay hai giá trị khóa mẫu bằng khóa ngẫu nhiên của bạn. Sau đó chạy:
-
-~~~powershell
-npm run dev
+npm i
+npm start
 ~~~
 
 Backend mặc định sử dụng cổng `5000`. Kiểm tra API tại:
@@ -423,24 +417,13 @@ Phản hồi có các trường `status`, `message` và `timestamp`; `status` l�
 ### Bước 3: cài đặt và chạy frontend
 
 Mở **terminal thứ hai** tại thư mục gốc repository:
-
+chạy giao diện
 ~~~powershell
 cd Note/frontend
-npm ci
-if (!(Test-Path .env)) { Copy-Item .env.example .env }
-~~~
-
-Kiểm tra `Note/frontend/.env`:
-
-~~~dotenv
-VITE_API_BASE_URL=http://localhost:5000/api
-~~~
-
-Chạy giao diện:
-
-~~~powershell
+npm i
 npm run dev
 ~~~
+
 
 Mở địa chỉ Vite thông báo trong terminal, thường là:
 
@@ -458,7 +441,6 @@ if [ ! -f .env ]; then cp .env.example .env; fi
 
 ### Khi đã mở terminal tại thư mục Note
 
-Với cấu trúc cục bộ giống cây bạn xuất trong `cay.txt`, lệnh chuyển thư mục là:
 
 **Terminal backend**, mở từ `Note/`:
 
@@ -624,12 +606,12 @@ Khi đổi mật khẩu riêng tư, frontend giải mã và mã hóa lại cả 
 
 | Phím | Chức năng |
 | --- | --- |
-| `Ctrl + K` / `⌘ + K` | Tập trung vào tìm kiếm trên dashboard. |
-| `Ctrl + S` / `⌘ + S` | Lưu nội dung trong trình soạn thảo hỗ trợ phím tắt. |
-| `Ctrl + B` / `⌘ + B` | In đậm trong vùng soạn thảo. |
-| `Ctrl + I` / `⌘ + I` | In nghiêng trong vùng soạn thảo. |
-| `Ctrl + U` / `⌘ + U` | Gạch chân trong vùng soạn thảo. |
-| `Ctrl + V` / `⌘ + V` | Dán nội dung hoặc ảnh từ clipboard vào vùng soạn thảo. |
+| `Ctrl + K`  | Tập trung vào tìm kiếm trên dashboard. |
+| `Ctrl + S` /  | Lưu nội dung trong trình soạn thảo hỗ trợ phím tắt. |
+| `Ctrl + B` /  | In đậm trong vùng soạn thảo. |
+| `Ctrl + I` / | In nghiêng trong vùng soạn thảo. |
+| `Ctrl + U` /  | Gạch chân trong vùng soạn thảo. |
+| `Ctrl + V` / | Dán nội dung hoặc ảnh từ clipboard vào vùng soạn thảo. |
 | `Esc` | Đóng menu chọn định dạng xuất. |
 
 ## Các trang và đường dẫn
