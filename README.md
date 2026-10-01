@@ -38,6 +38,53 @@
 | Note/server/data | Dữ liệu JSON cục bộ được tạo khi ứng dụng chạy. |
 | Note/server/test | Kiểm thử API, bảo mật và lưu trữ. |
 
+### Cây thư mục
+
+~~~text
+DoAnGhiChu/
+├── README.md
+└── Note/
+    ├── frontend/
+    │   ├── public/
+    │   ├── src/
+    │   │   ├── components/
+    │   │   │   ├── Layouts/
+    │   │   │   ├── Notes/
+    │   │   │   ├── Public/
+    │   │   │   ├── UI/
+    │   │   │   └── User/
+    │   │   ├── context/
+    │   │   ├── hooks/
+    │   │   ├── pages/
+    │   │   ├── routes/
+    │   │   ├── services/
+    │   │   ├── styles/
+    │   │   ├── utils/
+    │   │   ├── App.jsx
+    │   │   ├── index.css
+    │   │   └── main.jsx
+    │   ├── test/
+    │   ├── .env.example
+    │   ├── .oxlintrc.json
+    │   ├── index.html
+    │   ├── package-lock.json
+    │   ├── package.json
+    │   └── vite.config.js
+    └── server/
+        ├── config/
+        ├── controllers/
+        ├── data/
+        │   └── users/
+        ├── middleware/
+        ├── routes/
+        ├── test/
+        ├── utils/
+        ├── .env.example
+        ├── package-lock.json
+        ├── package.json
+        └── server.js
+~~~
+
 ## Yêu cầu
 
 - Node.js 22.12 trở lên và npm.
