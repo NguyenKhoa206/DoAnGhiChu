@@ -64,7 +64,7 @@
 .preview-note-items.compact { gap: 5px; }
 .preview-note-items.compact span { height: 18px; }
 .preview-note-items.compact.grid span { height: 35px; }
-.settings-security-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.settings-security-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
 .card-desc { margin: 0; color: var(--text-muted); font-size: .8rem; line-height: 1.65; }
 .settings-card .auth-input-wrap { position: relative; display: flex; align-items: center; }
 .settings-card .auth-input-icon { display: none; }

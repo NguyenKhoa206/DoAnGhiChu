@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import noteService, { isPrivateLockedError } from '../services/noteService';
-import authService from '../services/authService';
+import privateService from '../services/privateService';
 import PrivateAuthModal from '../components/UI/PrivateAuthModal';
 import NoteList from '../components/Notes/NoteList';
 import DocumentDetailView from '../components/Notes/DocumentDetailView';
@@ -12,6 +12,7 @@ import Icon from '../components/UI/Icon';
 const PrivateNotePage = () => {
   const [isAuthenticatedPrivate, setIsAuthenticatedPrivate] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [initialLockedUntil, setInitialLockedUntil] = useState(0);
   const [privatePassword, setPrivatePassword] = useState('');
   const [privateToken, setPrivateToken] = useState('');
   
@@ -45,9 +46,10 @@ const PrivateNotePage = () => {
     const checkPrivateSetup = async () => {
       setCheckingAuthSetup(true);
       try {
-        const response = await authService.checkPrivatePasswordStatus();
+        const response = await privateService.checkPrivatePasswordStatus();
         const hasSetup = response.data?.hasSetup ?? response?.hasSetup ?? false;
         
+        setInitialLockedUntil(response.data?.lockedUntil ?? response.lockedUntil ?? 0);
         setIsFirstTime(!hasSetup);
         setIsAuthModalOpen(true); // Luôn bật Modal xác thực khi mới truy cập trang
       } catch {
@@ -175,6 +177,7 @@ const PrivateNotePage = () => {
       <PrivateAuthModal
         isOpen={isAuthModalOpen}
         isFirstTime={isFirstTime}
+        initialLockedUntil={initialLockedUntil}
         onClose={() => {
           if (!isAuthenticatedPrivate) {
             // Nếu hủy xác thực mà chưa đăng nhập thành công -> ẩn modal và cảnh báo

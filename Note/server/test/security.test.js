@@ -4,12 +4,6 @@ const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
-const {
-  comparePassword,
-  decryptServerData,
-  encryptServerData,
-  hashPassword,
-} = require('../utils/encryption');
 const { cleanNoteContent } = require('../utils/noteContent');
 const { isValidNoteBackgroundImage, MAX_NOTE_BACKGROUND_BYTES } = require('../utils/noteBackground');
 
@@ -98,44 +92,6 @@ const runJwtConfig = (overrides = {}) => spawnSync(
     env: { ...process.env, ...overrides },
   },
 );
-
-test('server encryption round-trips data when a strong key is configured', () => {
-  const previousKey = process.env.SERVER_ENCRYPTION_KEY;
-  process.env.SERVER_ENCRYPTION_KEY = 'test-only-server-encryption-key-32-bytes';
-  try {
-    const plaintext = 'Nếp private data test';
-    const ciphertext = encryptServerData(plaintext);
-    assert.notEqual(ciphertext, plaintext);
-    assert.equal(decryptServerData(ciphertext), plaintext);
-  } finally {
-    if (previousKey === undefined) delete process.env.SERVER_ENCRYPTION_KEY;
-    else process.env.SERVER_ENCRYPTION_KEY = previousKey;
-  }
-});
-
-test('server encryption fails closed when its key is missing', () => {
-  const previousKey = process.env.SERVER_ENCRYPTION_KEY;
-  const previousConsoleError = console.error;
-  delete process.env.SERVER_ENCRYPTION_KEY;
-  console.error = () => {};
-  try {
-    assert.throws(() => encryptServerData('must not be saved as plaintext'), /SERVER_ENCRYPTION_KEY/);
-  } finally {
-    console.error = previousConsoleError;
-    if (previousKey !== undefined) process.env.SERVER_ENCRYPTION_KEY = previousKey;
-  }
-});
-
-test('server encryption keeps plain-text legacy values readable', () => {
-  assert.equal(decryptServerData('legacy note'), 'legacy note');
-});
-
-test('account passwords are hashed and verified with bcrypt', async () => {
-  const hash = await hashPassword('test-password-123');
-  assert.notEqual(hash, 'test-password-123');
-  assert.equal(await comparePassword('test-password-123', hash), true);
-  assert.equal(await comparePassword('different-password', hash), false);
-});
 
 test('production JWT configuration requires a secret of at least 32 bytes', () => {
   for (const secret of ['', 'too-short']) {

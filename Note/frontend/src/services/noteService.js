@@ -12,7 +12,7 @@ const privateRequest = (privateToken) => {
   return { headers: { 'X-Private-Token': privateToken } };
 };
 export const isPrivateLockedError = (error) => error?.code === 'PRIVATE_LOCKED'
-  || error?.response?.data?.code === 'PRIVATE_LOCKED';
+  || ['PRIVATE_LOCKED', 'PRIVATE_RATE_LIMITED'].includes(error?.response?.data?.code);
 
 const noteService = {
   // ==========================================

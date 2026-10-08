@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import noteService, { isPrivateLockedError } from '../services/noteService';
-import authService from '../services/authService';
+import privateService from '../services/privateService';
 import PrivateAuthModal from '../components/UI/PrivateAuthModal';
 import Toast from '../components/UI/Toast';
 import { decryptText } from '../utils/crypto';
@@ -76,7 +76,7 @@ const TrashPage = () => {
     setPrivateReady(false);
     setPrivateTrash([]);
     try {
-      const status = await authService.checkPrivatePasswordStatus();
+      const status = await privateService.checkPrivatePasswordStatus();
       const hasSetup = status?.hasSetup ?? status?.data?.hasSetup ?? false;
       setFirstTime(!hasSetup);
       setAuthOpen(true);

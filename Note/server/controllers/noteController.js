@@ -27,18 +27,17 @@ const attachmentsAreValid = (items) => items === undefined || (
 // Inline images are inside the encrypted content, rather than attachment metadata.
 const MAX_PRIVATE_CONTENT_LENGTH = 8_000_000;
 
-// ✅ Cố định chính xác vị trí vào: /server/data/users/
-// __dirname là /server/controllers/ -> '../data/users' trỏ chuẩn về /server/data/users/
-const USERS_DATA_DIR = path.resolve(__dirname, '../data/users');
-
-// Helper: Lấy đường dẫn thư mục notes công khai của user (/server/data/users/[userId]/notes)
-const getUserNotesDir = (userId) => path.join(USERS_DATA_DIR, userId, 'notes');
-const getUserTrashFilePath = (userId) => path.join(USERS_DATA_DIR, userId, 'trash.json');
-
-// Helper: Lấy đường dẫn file private.json của user (/server/data/users/[userId]/private.json)
-const getUserPrivateFilePath = (userId) => path.join(USERS_DATA_DIR, userId, 'private.json');
-const getUserPrivateTrashFilePath = (userId) => path.join(USERS_DATA_DIR, userId, 'private-trash.json');
-const readArray = async (filePath) => (await readJsonFile(filePath)) || [];
+const { getNotebookDir } = require('../utils/notebookStorage');
+const getUserNotesDir = () => path.join(getNotebookDir(), 'notes');
+const getUserTrashFilePath = () => path.join(getNotebookDir(), 'trash.json');
+const getUserPrivateFilePath = () => path.join(getNotebookDir(), 'private.json');
+const getUserPrivateTrashFilePath = () => path.join(getNotebookDir(), 'private-trash.json');
+const readArray = async (filePath) => {
+  const data = await readJsonFile(filePath);
+  if (data === null) return [];
+  if (!Array.isArray(data)) throw new Error('Dữ liệu ghi chú phải là một mảng JSON.');
+  return data;
+};
 const sendSavedNote = (req, res, status, note) => res.status(status).json(
   req.params?.topic || req.baseUrl === '/api/private'
     ? { success: true, note }
@@ -210,7 +209,7 @@ const noteController = {
         // Lấy ghi chú của 1 chủ đề cụ thể
         const filePath = path.join(notesDir, `${topic}.json`);
         if (await fs.pathExists(filePath)) {
-          const topicNotes = await readJsonFile(filePath);
+          const topicNotes = await readArray(filePath);
           allNotes = (topicNotes || []).map((n) => ({ ...n, topicSlug: topic }));
         }
       } else {
@@ -221,7 +220,7 @@ const noteController = {
         for (const fileName of jsonFiles) {
           const topicSlug = fileName.replace('.json', '');
           const filePath = path.join(notesDir, fileName);
-          const topicNotes = await readJsonFile(filePath);
+          const topicNotes = await readArray(filePath);
 
           if (Array.isArray(topicNotes)) {
             const mappedNotes = topicNotes.map((n) => ({ ...n, topicSlug }));
@@ -247,8 +246,8 @@ const noteController = {
       const { title = '', content = '', noteDate, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
       const topicSlug = req.params?.topic ?? req.body.topicSlug;
 
-      if (typeof title !== 'string' || title.trim().length > 160) {
-        return res.status(400).json({ message: 'Tiêu đề ghi chú cần tối đa 160 ký tự.' });
+      if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
+        return res.status(400).json({ message: 'Tiêu đề ghi chú cần từ 1 đến 160 ký tự, không chỉ gồm khoảng trắng.' });
       }
       if (typeof content !== 'string') return res.status(400).json({ message: 'Nội dung ghi chú phải là văn bản.' });
       if (topicSlug !== undefined && (typeof topicSlug !== 'string' || topicSlug.length > 80)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
@@ -265,12 +264,12 @@ const noteController = {
 
       let notes = [];
       if (await fs.pathExists(filePath)) {
-        notes = await readJsonFile(filePath);
+        notes = await readArray(filePath);
       }
 
       const newNote = {
         id: `note_${randomUUID()}`,
-        title: title.trim() || 'Không tiêu đề',
+        title: title.normalize('NFC').trim(),
         content: cleanNoteContent(content),
         noteDate: validDate(noteDate) ? noteDate : new Date().toISOString().slice(0, 10),
         backgroundColor: validColor(backgroundColor) ? backgroundColor : '#fffdf8',
@@ -303,8 +302,8 @@ const noteController = {
       const { title, content, noteDate, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
       const topic = req.params.topic;
       if (topic !== undefined && !isTopicSlug(topic)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
-      if (title !== undefined && (typeof title !== 'string' || title.trim().length > 160)) {
-        return res.status(400).json({ message: 'Tiêu đề ghi chú cần tối đa 160 ký tự.' });
+      if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.trim().length > 160)) {
+        return res.status(400).json({ message: 'Tiêu đề ghi chú cần từ 1 đến 160 ký tự, không chỉ gồm khoảng trắng.' });
       }
       if (content !== undefined && typeof content !== 'string') return res.status(400).json({ message: 'Nội dung ghi chú phải là văn bản.' });
       if (!isValidNoteBackgroundImage(backgroundImage)) return res.status(400).json({ message: 'Ảnh nền không hợp lệ hoặc vượt quá 800 KB.' });
@@ -323,14 +322,14 @@ const noteController = {
 
       for (const fileName of jsonFiles) {
         const filePath = path.join(notesDir, fileName);
-        let notes = await readJsonFile(filePath);
+        let notes = await readArray(filePath);
 
         const index = notes.findIndex((n) => n.id === noteId);
         if (index !== -1) {
           found = true;
           notes[index] = {
             ...notes[index],
-            title: title !== undefined ? (title.trim() || 'Không tiêu đề') : notes[index].title,
+            title: title !== undefined ? (title.normalize('NFC').trim()) : notes[index].title,
             content: content !== undefined ? cleanNoteContent(content) : notes[index].content,
             noteDate: validDate(noteDate) ? noteDate : notes[index].noteDate,
             backgroundColor: validColor(backgroundColor) ? backgroundColor : notes[index].backgroundColor,
@@ -383,7 +382,7 @@ const noteController = {
 
       for (const fileName of jsonFiles) {
         const filePath = path.join(notesDir, fileName);
-        let notes = await readJsonFile(filePath);
+        let notes = await readArray(filePath);
 
         const note = notes.find((item) => item.id === noteId);
         if (note) {
@@ -482,7 +481,7 @@ const noteController = {
       return res.status(200).json([]);
     }
 
-    const privateNotes = await readJsonFile(privateFilePath);
+    const privateNotes = await readArray(privateFilePath);
     return res.status(200).json(privateNotes || []);
   } catch (error) {
     console.error('Lỗi lấy ghi chú riêng tư:', error);
@@ -510,7 +509,7 @@ const noteController = {
       let privateNotes = [];
 
       if (await fs.pathExists(privateFilePath)) {
-        privateNotes = await readJsonFile(privateFilePath);
+        privateNotes = await readArray(privateFilePath);
       }
 
       const newPrivateNote = {
@@ -554,7 +553,7 @@ const noteController = {
         return res.status(404).json({ message: 'Tệp ghi chú riêng tư không tồn tại.' });
       }
 
-      let privateNotes = await readJsonFile(privateFilePath);
+      let privateNotes = await readArray(privateFilePath);
       const index = privateNotes.findIndex((n) => n.id === noteId);
 
       if (index === -1) {

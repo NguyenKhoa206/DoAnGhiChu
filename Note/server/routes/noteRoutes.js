@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const noteController = require('../controllers/noteController');
-const authMiddleware = require('../middleware/authMiddleware');
+const notebookMiddleware = require('../middleware/notebookMiddleware');
 const privateAuthMiddleware = require('../middleware/privateAuthMiddleware');
 
-// Áp dụng authMiddleware cho tất cả các endpoint quản lý ghi chú
-router.use(authMiddleware);
+// Áp dụng notebookMiddleware cho tất cả các endpoint quản lý ghi chú
+router.use(notebookMiddleware);
 // The legacy private URLs require the same grant as /api/private/notes.
 router.use('/private', privateAuthMiddleware);
 

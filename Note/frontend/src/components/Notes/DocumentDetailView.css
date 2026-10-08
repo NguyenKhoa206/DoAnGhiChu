@@ -141,3 +141,5 @@
 .document-image-selection button { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; display: grid; place-items: center; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 50%; box-shadow: var(--shadow-sm); pointer-events: auto; cursor: pointer; }
 .document-image-selection button:hover { color: #c43f35; border-color: #c43f35; }
 @media (max-width: 680px) { .document-image-selection button { width: 36px; height: 36px; } }
+
+.document-field-error { margin: 8px 0; color: #bd4233; font-size: .85rem; line-height: 1.5; }

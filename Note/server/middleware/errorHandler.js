@@ -3,7 +3,7 @@
  * Bắt tất cả các lỗi phát sinh từ Async Controllers / Route Handlers
  */
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Server Error Logged:', {
+  if ((err.status || err.statusCode || res.statusCode || 500) >= 500 || res.statusCode === 200) console.error('❌ Server Error Logged:', {
     message: err.message,
     stack: process.env.NODE_ENV === 'production' ? null : err.stack,
     path: req.originalUrl,
@@ -36,7 +36,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'TokenExpiredError') {
     return res.status(401).json({
       success: false,
-      message: 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.',
+      message: 'Phiên làm việc đã hết hạn. Vui lòng mở khóa vùng riêng tư lại.',
     });
   }
 

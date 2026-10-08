@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { isDefaultNoteBackground } from '../../utils/noteAppearance';
 import './DocumentDetailView.css';
 import Icon from '../UI/Icon';
@@ -21,6 +21,9 @@ const getLocalDate = () => {
 
 const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, backLabel = 'Tất cả tài liệu', onSave, onDelete, onDraftChange, onToggleFavorite, onTogglePinned, isPrivate = false, readOnly = false }) => {
   const editorRef = useRef(null);
+  const initializedEditorRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const composingRef = useRef(false);
   const initialContentRef = useRef(draft?.content ?? note.content ?? '');
   const initialFilesRef = useRef({ attachments: draft?.attachments ?? note.attachments ?? [], readOnly });
   const imageInputRef = useRef(null);
@@ -50,6 +53,8 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   const [activeTab, setActiveTab] = useState(() => readOnly ? 'Thông tin' : 'Định dạng');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const saveErrorId = useId();
   const documentNote = savedNote || note;
   const selectedTab = readOnly ? 'Thông tin' : activeTab;
   useEffect(() => {
@@ -59,6 +64,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   useEffect(() => {
     if (readOnly) return;
     const changedSelection = () => {
+      if (composingRef.current) return;
       const selection = window.getSelection();
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
       const format = readTextFormat(editorRef.current, range);
@@ -86,7 +92,8 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   }, [selectedImage, content]);
   const setEditorElement = useCallback((element) => {
     editorRef.current = element;
-    if (element) {
+    if (element && initializedEditorRef.current !== element) {
+      initializedEditorRef.current = element;
       element.innerHTML = initialContentRef.current;
       decorateNoteFiles(element, initialFilesRef.current.attachments, initialFilesRef.current.readOnly);
       const drawingBottom = Array.from(element.querySelectorAll('img[style*="position: absolute"]')).reduce((bottom, image) => {
@@ -105,6 +112,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     || noteDate !== (documentNote.noteDate || initialNoteDate);
 
   const rememberSelection = () => {
+    if (composingRef.current) return;
     const selection = window.getSelection();
     if (selection?.rangeCount && editorRef.current?.contains(selection.anchorNode)) {
       selectionRef.current = selection.getRangeAt(0).cloneRange();
@@ -114,6 +122,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const syncContent = () => {
+    if (composingRef.current) return;
     if (editorRef.current) {
       const next = editorRef.current.innerHTML;
       setContent(next);
@@ -133,6 +142,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const restoreSelection = () => {
+    if (composingRef.current) return;
     const editor = editorRef.current;
     const selection = window.getSelection();
     if (!editor || !selection) return;
@@ -195,7 +205,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const removeAttachment = (attachment) => {
-    if (readOnly || mediaBusyRef.current) return;
+    if (readOnly || mediaBusyRef.current || composingRef.current) return;
     const next = attachments.filter((item) => item !== attachment);
     removeFileLinks(editorRef.current, attachment.id);
     syncContent();
@@ -205,7 +215,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const applyCommand = (command, value) => {
-    if (readOnly || mediaBusyRef.current) return;
+    if (readOnly || mediaBusyRef.current || composingRef.current) return;
     editorRef.current?.focus();
     restoreSelection();
     document.execCommand(command, false, value);
@@ -214,7 +224,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const applyBlockStyle = (styleName, value) => {
-    if (readOnly || mediaBusyRef.current) return;
+    if (readOnly || mediaBusyRef.current || composingRef.current) return;
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -243,7 +253,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const applyInlineStyle = (styleName, value) => {
-    if (readOnly || mediaBusyRef.current) return;
+    if (readOnly || mediaBusyRef.current || composingRef.current) return;
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus(); restoreSelection();
@@ -479,11 +489,17 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const save = async () => {
-    if (readOnly || mediaBusyRef.current || saving) return;
+    if (readOnly || mediaBusyRef.current || saving || composingRef.current) return;
     setSaving(true);
     setMessage('');
+    setSaveError('');
     try {
-      const savedTitle = title.trim() || (isPrivate ? 'Lưu bút mật' : 'Không tiêu đề');
+      const savedTitle = (titleInputRef.current?.value ?? title).normalize('NFC').trim();
+      if (!savedTitle) {
+        setSaveError('Vui lòng nhập tiêu đề ghi chú, không chỉ gồm khoảng trắng.');
+        titleInputRef.current?.focus();
+        return;
+      }
       const changes = { title: savedTitle, content: editorRef.current?.innerHTML ?? content, noteDate, attachments, backgroundColor, backgroundImage };
       const sizeError = noteMediaSizeError({ ...changes, isPrivate });
       if (sizeError) {
@@ -492,17 +508,18 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
       }
       const result = await onSave(documentNote.id || null, changes);
       setTitle(savedTitle);
+      if (titleInputRef.current) titleInputRef.current.value = savedTitle;
       setSavedNote({ ...documentNote, ...(result || {}), ...changes });
       setMessage('Đã lưu');
     } catch (error) {
-      setMessage(error.response?.data?.message || error.message || 'Lưu chưa thành công');
+      setSaveError(error.response?.data?.message || error.message || 'Lưu chưa thành công');
     } finally {
       setSaving(false);
     }
   };
 
   const handleEditorShortcut = (event) => {
-    if (readOnly) return;
+    if (readOnly || composingRef.current || event.nativeEvent?.isComposing || event.nativeEvent?.keyCode === 229) return;
     if (event.key === 'Escape' && selectedImage) {
       clearSelectedImage();
       if (activeTab === 'Ảnh') setActiveTab('Định dạng');
@@ -520,6 +537,21 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
       event.preventDefault();
       event.stopPropagation();
       save();
+    }
+  };
+  const commitTitle = (element) => {
+    setTitle(element.value);
+    if (element.value.trim()) setSaveError('');
+    onDraftChange?.(documentNote.id, { title: element.value });
+  };
+  const handleCommittedInput = (event) => {
+    if (composingRef.current || event.nativeEvent?.isComposing) return;
+    syncContent();
+    syncDrawingHeight();
+    setMessage('');
+    if (selectedImage && !event.currentTarget.contains(selectedImage)) {
+      clearSelectedImage();
+      if (activeTab === 'Ảnh') setActiveTab('Định dạng');
     }
   };
   const handleBack = () => {
@@ -552,7 +584,8 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
         <main className="document-page-area">
           <article className={`document-page${!isDefaultNoteBackground(backgroundColor) ? ' custom-paper' : ''}`} style={{ ...(!isDefaultNoteBackground(backgroundColor) ? { backgroundColor } : {}), ...(backgroundImage ? { backgroundImage: `linear-gradient(var(--paper-image-overlay), var(--paper-image-overlay)), url("${backgroundImage}")` } : {}) }}>
             <div className="document-page-meta"><span>{topic?.name || (isPrivate ? 'Riêng tư' : 'Ghi chú')}</span><span>·</span><span>{documentNote.id ? `Cập nhật ${formatDate(documentNote.updatedAt || documentNote.createdAt)}` : 'Ghi chú mới'}</span></div>
-            <input className="document-title-input" aria-label="Tên tài liệu" placeholder="Tài liệu chưa có tiêu đề" value={title} maxLength={160} readOnly={readOnly} onChange={(event) => { setTitle(event.target.value); onDraftChange?.(documentNote.id, { title: event.target.value }); }} />
+            <input className="document-title-input" aria-label="Tên tài liệu" aria-invalid={Boolean(saveError)} aria-describedby={saveError ? saveErrorId : undefined} placeholder="Tài liệu chưa có tiêu đề" ref={titleInputRef} defaultValue={title} maxLength={160} readOnly={readOnly} onCompositionStart={() => { composingRef.current = true; }} onCompositionEnd={(event) => { composingRef.current = false; commitTitle(event.currentTarget); }} onChange={(event) => { if (!composingRef.current && !event.nativeEvent.isComposing) commitTitle(event.currentTarget); }} />
+            {saveError && <p className="document-field-error" id={saveErrorId} role="alert">{saveError}</p>}
             <div className="document-rule" />
             <div className={`document-editor-stage${dragOver ? ' is-dragging' : ''}`}>
               <div
@@ -573,7 +606,9 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
                 onDrop={handleMediaDrop}
                 onDragOver={(event) => { if (!readOnly && Array.from(event.dataTransfer.types).includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = mediaBusy ? 'none' : 'copy'; setDragOver(!mediaBusy); } }}
                 onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDragOver(false); }}
-                onInput={(event) => { const next = event.currentTarget.innerHTML; setContent(next); syncDrawingHeight(); setMessage(''); if (selectedImage && !event.currentTarget.contains(selectedImage)) { clearSelectedImage(); if (activeTab === 'Ảnh') setActiveTab('Định dạng'); } onDraftChange?.(documentNote.id, { content: next }); }}
+                onCompositionStart={() => { composingRef.current = true; }}
+                onCompositionEnd={() => { composingRef.current = false; syncContent(); syncDrawingHeight(); rememberSelection(); }}
+                onInput={handleCommittedInput}
               />
               {!readOnly && selectedImage && imageOverlay && <div className="document-image-selection" style={imageOverlay}><button type="button" disabled={mediaBusy || saving} aria-label="Xóa ảnh đang chọn" title="Xóa ảnh" onMouseDown={(event) => event.preventDefault()} onClick={removeSelectedImage}><Icon name="close" size={17} /></button></div>}
               {dragOver && <div className="document-image-drop-hint"><Icon name="image" size={28} /><span>Thả ảnh tại đây để chèn</span></div>}

@@ -1,60 +1,28 @@
-const path = require('path');
 const fs = require('fs-extra');
+const path = require('node:path');
+const { randomUUID } = require('node:crypto');
 
-// ✅ Cố định chính xác vị trí vào: /server/data/users/
-// __dirname là /server/utils/ -> '../data/users' trỏ về /server/data/users/
-const DATA_DIR = path.resolve(__dirname, '../data/users');
-
-/**
- * Đọc file JSON an toàn, trả về null nếu file không tồn tại
- */
+// Missing and blank JSON files are treated as new data. Invalid nonempty JSON
+// remains an error, rather than silently deleting a user's saved information.
 const readJsonFile = async (filePath) => {
   try {
-    if (await fs.pathExists(filePath)) {
-      return await fs.readJson(filePath);
-    }
-    return null;
+    const text = await fs.readFile(filePath, 'utf8');
+    return text.trim() ? JSON.parse(text) : null;
   } catch (error) {
-    console.error(`Lỗi khi đọc tệp JSON (${filePath}):`, error);
+    if (error.code === 'ENOENT') return null;
     throw error;
   }
 };
 
-/**
- * Ghi dữ liệu vào file JSON với định dạng lề thụt 2 spaces
- */
+// Write to a temporary sibling and rename, so readers never see half a JSON file.
 const writeJsonFile = async (filePath, data) => {
+  await fs.ensureDir(path.dirname(filePath));
+  const temporary = `${filePath}.${randomUUID()}.tmp`;
   try {
-    await fs.ensureFile(filePath);
-    await fs.writeJson(filePath, data, { spaces: 2 });
+    await fs.writeJson(temporary, data, { spaces: 2 });
+    await fs.rename(temporary, filePath);
     return true;
-  } catch (error) {
-    console.error(`Lỗi khi ghi tệp JSON (${filePath}):`, error);
-    throw error;
-  }
+  } finally { await fs.remove(temporary); }
 };
 
-/**
- * Lấy đường dẫn thư mục của người dùng
- */
-const getUserDir = (userIdOrUsername) => {
-  return path.join(DATA_DIR, userIdOrUsername);
-};
-
-/**
- * Khởi tạo hồ sơ người dùng; các thư mục dữ liệu khác chỉ được tạo khi cần.
- */
-const createUserDataFolder = async (username, profileData) => {
-  const userDir = getUserDir(username);
-  await writeJsonFile(path.join(userDir, 'profile.json'), profileData);
-
-  return userDir;
-};
-
-module.exports = {
-  DATA_DIR,
-  readJsonFile,
-  writeJsonFile,
-  getUserDir,
-  createUserDataFolder,
-};
+module.exports = { readJsonFile, writeJsonFile };

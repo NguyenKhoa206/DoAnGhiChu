@@ -1,14 +1,15 @@
 const express = require('express');
-const authMiddleware = require('../middleware/authMiddleware');
+const notebookMiddleware = require('../middleware/notebookMiddleware');
 const privateAuthMiddleware = require('../middleware/privateAuthMiddleware');
+const { serializedPasswordHandler } = require('../utils/privateAttempts');
 const authController = require('../controllers/authController');
 const noteController = require('../controllers/noteController');
 
 const router = express.Router();
-router.use(authMiddleware);
+router.use(notebookMiddleware);
 
 // Sprint 3 API: the body may use { password } or { privatePassword }.
-router.post('/auth', authController.verifyPrivatePassword);
+router.post('/auth', serializedPasswordHandler(authController.verifyPrivatePassword));
 router.use(privateAuthMiddleware);
 router.get('/notes', noteController.getPrivateNotes);
 router.post('/notes', noteController.createPrivateNote);

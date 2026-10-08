@@ -253,8 +253,8 @@
   .nep-dashboard, .nep-workspace { min-height: calc(100dvh - 60px); }
   .nep-workspace { display: flex; flex-direction: column; }
   .nep-workspace.all-notes-workspace { display: block; }
-  .all-notes-browser { min-height: calc(100dvh - 60px); max-height: none; padding: 18px 13px 12px; }
-  .note-browser { min-height: 235px; max-height: 39dvh; padding: 17px 13px 11px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .note-browser.all-notes-browser { min-height: calc(100dvh - 60px); max-height: none; padding: 18px 13px 12px; }
+  .note-browser:not(.all-notes-browser) { min-height: 235px; max-height: 39dvh; padding: 17px 13px 11px; border-right: 0; border-bottom: 1px solid var(--line); }
   .browser-heading { padding-bottom: 12px; }
   .browser-heading h2 { font-size: 1.27rem; }
   .browser-tools { gap: 8px; padding-bottom: 9px; }

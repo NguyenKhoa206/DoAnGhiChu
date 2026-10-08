@@ -1,7 +1,0 @@
-.auth-page--login .auth-form-panel { max-width: 424px; }
-.auth-page--login .auth-form-heading > p { margin-bottom: 32px; }
-.auth-page--login .auth-form { gap: 20px; }
-
-@media (max-width: 760px) {
-  .auth-page--login .auth-form-panel { max-width: none; }
-}

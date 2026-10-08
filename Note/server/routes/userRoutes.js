@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const authMiddleware = require('../middleware/authMiddleware');
+const notebookMiddleware = require('../middleware/notebookMiddleware');
 
 // Bắt buộc xác thực Token trước khi thao tác với dữ liệu người dùng
-router.use(authMiddleware);
+router.use(notebookMiddleware);
 
 /**
  * @route   GET /api/users/profile

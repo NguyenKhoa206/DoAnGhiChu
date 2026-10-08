@@ -1,12 +1,12 @@
 const fs = require('fs-extra');
 const { readJsonFile, writeJsonFile } = require('../utils/read_write');
-const { getAccountProfilePath } = require('../utils/accountStorage');
+const { getProfilePath } = require('../utils/notebookStorage');
 const { validPreferences, mergePreferences } = require('../utils/uiPreferences');
 
 // ✅ Cố định chính xác vị trí vào: /server/data/users/
 // __dirname là /server/controllers/ -> '../data/users' trỏ chuẩn về /server/data/users/
 // Utility helper: Lấy đường dẫn tới file profile.json của user
-const getUserProfilePath = (userId) => getAccountProfilePath(userId);
+const getUserProfilePath = (userId) => getProfilePath(userId);
 
 const userController = {
   /**
@@ -32,10 +32,8 @@ const userController = {
       return res.status(200).json({
         user: {
           id: safeProfile.id,
-          username: safeProfile.username,
           displayName: safeProfile.displayName,
           email: safeProfile.email,
-          role: 'user',
           createdAt: safeProfile.createdAt,
           avatarDataUrl: safeProfile.avatarDataUrl || '',
         },
@@ -118,7 +116,6 @@ const userController = {
           username: updatedUser.username,
           displayName: updatedUser.displayName,
           email: updatedUser.email,
-          role: 'user',
           avatarDataUrl: updatedUser.avatarDataUrl || '',
           createdAt: updatedUser.createdAt,
         },

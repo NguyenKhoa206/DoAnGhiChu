@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs-extra');
 
 // 1. Import Middleware xử lý lỗi trung tâm (Trỏ đúng vào thư mục /middleware/)
 const errorHandler = require('./middleware/errorHandler');
@@ -21,7 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Khởi tạo nơi lưu tài khoản ghi chú.
-const { USERS_DATA_DIR } = require('./utils/accountStorage');
+const { prepareNotebook } = require('./utils/notebookStorage');
 
 // Đăng ký các Endpoint Routes
 app.use('/api/auth', authRoutes);
@@ -48,10 +47,10 @@ app.use((req, res, next) => {
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);
 
-// Chuẩn bị dữ liệu trước khi nhận request đăng nhập.
+// Chuẩn bị dữ liệu trước khi nhận request.
 const startServer = async () => {
-  await fs.ensureDir(USERS_DATA_DIR);
-  console.log('📂 Thư mục dữ liệu người dùng đã sẵn sàng.');
+  await prepareNotebook();
+  console.log('📂 Sổ tay cá nhân đã sẵn sàng.');
 
   app.listen(PORT, () => {
     console.log(`🚀 Server đang chạy tại: http://localhost:${PORT}`);

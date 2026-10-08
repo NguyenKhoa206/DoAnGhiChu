@@ -2,17 +2,16 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import noteService from '../../services/noteService';
 import { AppContext } from '../../context/AppContextBase';
-import useAuth from '../../hooks/useAuth';
 import TopicModal from '../Notes/TopicModal';
 import Toast from '../UI/Toast';
 import Icon from '../UI/Icon';
-import PublicBrand from '../Public/PublicBrand';
+import Brand from './Brand';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user } = useContext(AppContext);
   const { preferences, updatePreferences } = useContext(AppContext);
   const [topics, setTopics] = useState([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
@@ -93,7 +92,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     <>
       <aside className={'sidebar-container' + (isOpen ? ' open' : '')}>
         <div className="sidebar-header">
-          <PublicBrand to="/dashboard" onClick={onClose} />
+          <Brand to="/dashboard" onClick={onClose} />
           <button className="mobile-close-btn" onClick={onClose} aria-label="Đóng menu"><Icon name="close" /></button>
         </div>
 
@@ -170,7 +169,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             <div className="account-avatar">{user?.avatarDataUrl ? <img src={user.avatarDataUrl} alt="" /> : (user?.displayName || user?.username || 'N').slice(0, 1).toLocaleUpperCase('vi')}</div>
             <div className="account-copy">
               <strong>{user?.displayName || user?.username || 'Sổ tay cá nhân'}</strong>
-              <span>{user?.email || `@${user?.username || ''}`}</span>
+              <span>{user?.email || 'Sổ tay cá nhân'}</span>
             </div>
           </Link>
         </div>

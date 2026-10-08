@@ -1,0 +1,7 @@
+.public-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text-main); flex-shrink: 0; font-family: var(--font-family); }
+.public-brand:hover { color: var(--text-main); }
+.public-brand-mark { display: grid; place-items: center; width: 41px; height: 43px; border-radius: 13px; color: #fff; background: var(--primary-color); box-shadow: 0 4px 10px var(--primary-shadow); font-size: .7rem; font-weight: 800; letter-spacing: -.025em; }
+.public-brand-mark svg { width: 24px; height: 24px; }
+.public-brand-name { font-size: 1.45rem; font-weight: 750; line-height: 1.15; letter-spacing: -.045em; }
+.public-brand-name > span { display: block; margin-top: 4px; color: var(--text-muted); font-size: .65rem; font-weight: 500; letter-spacing: .015em; }
+

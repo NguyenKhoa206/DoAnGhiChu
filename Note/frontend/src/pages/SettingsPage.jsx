@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AppContext } from '../context/AppContextBase';
 import userService from '../services/userService';
-import authService from '../services/authService';
+import privateService from '../services/privateService';
 import noteService from '../services/noteService';
 import { decryptText, encryptText } from '../utils/crypto';
 import Toast from '../components/UI/Toast';
 import './SettingsPage.css';
 import { useSearchParams } from 'react-router-dom';
 import Icon from '../components/UI/Icon';
-import PasswordInput from '../components/Public/PasswordInput';
+import PasswordInput from '../components/UI/PasswordInput';
 
 const COLOR_PALETTE = [
   { name: 'Xanh HKT', hex: '#2463eb' },
@@ -43,11 +43,6 @@ const SettingsPage = () => {
   const [theme, setTheme] = useState(() => preferences?.theme || 'light');
   const [primaryColor, setPrimaryColor] = useState(() => preferences?.primaryColor || '#2463eb');
 
-  // States mật khẩu tài khoản
-  const [currentAccountPassword, setCurrentAccountPassword] = useState('');
-  const [newAccountPassword, setNewAccountPassword] = useState('');
-  const [confirmAccountPassword, setConfirmAccountPassword] = useState('');
-
   // States mật khẩu riêng tư
   const [hasPrivateSetup, setHasPrivateSetup] = useState(false);
   const [currentPrivatePassword, setCurrentPrivatePassword] = useState('');
@@ -56,7 +51,6 @@ const SettingsPage = () => {
 
   // Trạng thái Loading & Toast
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [loadingAccountPassword, setLoadingAccountPassword] = useState(false);
   const [loadingPrivatePassword, setLoadingPrivatePassword] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
@@ -82,7 +76,7 @@ const SettingsPage = () => {
 
   useEffect(() => {
     let active = true;
-    authService.checkPrivatePasswordStatus().then((response) => {
+    privateService.checkPrivatePasswordStatus().then((response) => {
       if (active) setHasPrivateSetup(response.data?.hasSetup ?? response?.hasSetup ?? false);
     }).catch(() => {
       if (active) setPrivateStatusError('Không tải được trạng thái vùng riêng tư. Vui lòng thử lại.');
@@ -154,43 +148,6 @@ const SettingsPage = () => {
     reader.readAsDataURL(file);
   };
 
-  // 2. Cập nhật Mật khẩu Đăng nhập Tài khoản
-  const handleChangeAccountPassword = async (e) => {
-    e.preventDefault();
-    if (loadingAccountPassword) return;
-
-    if (!currentAccountPassword) {
-      showToast('Vui lòng nhập mật khẩu tài khoản hiện tại.', 'warning');
-      return;
-    }
-    if (newAccountPassword.length < 6 || new TextEncoder().encode(newAccountPassword).length > 72) {
-      showToast('Mật khẩu mới cần từ 6 ký tự và tối đa 72 byte.', 'warning');
-      return;
-    }
-    if (newAccountPassword !== confirmAccountPassword) {
-      showToast('Mật khẩu xác nhận không trùng khớp.', 'warning');
-      return;
-    }
-
-    setLoadingAccountPassword(true);
-
-    try {
-      await authService.changeAccountPassword({
-        currentPassword: currentAccountPassword,
-        newPassword: newAccountPassword,
-      });
-
-      showToast('Đã đổi mật khẩu tài khoản thành công!', 'success');
-      setCurrentAccountPassword('');
-      setNewAccountPassword('');
-      setConfirmAccountPassword('');
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Lỗi khi đổi mật khẩu tài khoản.', 'error');
-    } finally {
-      setLoadingAccountPassword(false);
-    }
-  };
-
   // 3. Cài đặt / Đổi Mật khẩu Vùng Riêng Tư
   const handleSavePrivatePassword = async (e) => {
     e.preventDefault();
@@ -213,7 +170,7 @@ const SettingsPage = () => {
 
     try {
       if (hasPrivateSetup) {
-        const privateAccess = await authService.verifyPrivatePassword(currentPrivatePassword);
+        const privateAccess = await privateService.verifyPrivatePassword(currentPrivatePassword);
         if (privateAccess?.success !== true || !privateAccess.privateToken) {
           throw new Error('Mật khẩu riêng tư hiện tại không đúng.');
         }
@@ -255,7 +212,7 @@ const SettingsPage = () => {
           Promise.all(encryptedNotes.map(reencryptNote)),
           Promise.all(encryptedTrashNotes.map(reencryptNote)),
         ]);
-        await authService.changePrivatePassword({
+        await privateService.changePrivatePassword({
           currentPassword: currentPrivatePassword,
           newPassword: newPrivatePassword,
           encryptedNotes: reencryptedNotes,
@@ -263,7 +220,7 @@ const SettingsPage = () => {
         });
         showToast('Đã đổi mật khẩu vùng riêng tư thành công!', 'success');
       } else {
-        await authService.setupPrivatePassword(newPrivatePassword);
+        await privateService.setupPrivatePassword(newPrivatePassword);
         showToast('Khởi tạo mật khẩu vùng riêng tư thành công!', 'success');
         setHasPrivateSetup(true);
       }
@@ -297,7 +254,6 @@ const SettingsPage = () => {
             </div>
             <div className="settings-form-grid">
               <div className="form-group"><label htmlFor="settings-display-name">Tên hiển thị</label><input id="settings-display-name" value={displayName} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} placeholder="Tên của bạn" autoComplete="name" required /><small className="field-hint">Tối đa 80 ký tự.</small></div>
-              <div className="form-group"><label htmlFor="settings-username">Tên đăng nhập</label><input id="settings-username" value={user?.username || ''} readOnly className="input-disabled" /><small className="field-hint">Tên đăng nhập được giữ nguyên.</small></div>
               <div className="form-group settings-full-width"><label htmlFor="settings-email">Email</label><input id="settings-email" type="email" value={email} maxLength={254} onChange={(event) => setEmail(event.target.value)} placeholder="ban@example.com" autoComplete="email" /><small className="field-hint">Bạn có thể để trống email.</small></div>
             </div>
             {user?.createdAt && <p className="profile-member-date">Tham gia từ {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'long' }).format(new Date(user.createdAt))}</p>}
@@ -307,7 +263,7 @@ const SettingsPage = () => {
       </section>}
 
       {activeTab === 'appearance' && <section className="settings-card" aria-labelledby="appearance-heading">
-        <div className="card-header"><h3 id="appearance-heading">Giao diện và hiển thị</h3><p>Tùy chọn được lưu cùng tài khoản để dùng lại khi đăng nhập.</p></div>
+        <div className="card-header"><h3 id="appearance-heading">Giao diện và hiển thị</h3><p>Tùy chọn được lưu trong sổ tay và giữ nguyên khi mở lại ứng dụng.</p></div>
         <form className="card-body" onSubmit={handleSaveUI}><fieldset disabled={loadingUI}>
           <div className="settings-appearance-grid"><div className="appearance-controls">
             <div className="form-group"><label>Chế độ giao diện</label><div className="theme-toggle-group" role="group" aria-label="Chế độ giao diện"><button type="button" className={`theme-btn ${theme === 'light' ? 'active' : ''}`} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}><Icon name="sun" size={18} />Sáng</button><button type="button" className={`theme-btn ${theme === 'dark' ? 'active' : ''}`} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}><Icon name="moon" size={18} />Tối</button></div></div>
@@ -321,12 +277,6 @@ const SettingsPage = () => {
       </section>}
 
       {activeTab === 'security' && <div className="settings-security-grid">
-        <section className="settings-card" aria-labelledby="account-security-heading"><div className="card-header"><h3 id="account-security-heading">Mật khẩu đăng nhập</h3><p>Cập nhật mật khẩu dùng để đăng nhập tài khoản HKT.</p></div><form className="card-body" onSubmit={handleChangeAccountPassword}><fieldset disabled={loadingAccountPassword}>
-          <div className="form-group"><label htmlFor="curr-acc-pass">Mật khẩu hiện tại</label><PasswordInput id="curr-acc-pass" label="mật khẩu hiện tại" value={currentAccountPassword} onChange={(event) => setCurrentAccountPassword(event.target.value)} autoComplete="current-password" required /></div>
-          <div className="form-group"><label htmlFor="new-acc-pass">Mật khẩu mới</label><PasswordInput id="new-acc-pass" label="mật khẩu mới" value={newAccountPassword} onChange={(event) => setNewAccountPassword(event.target.value)} autoComplete="new-password" minLength={6} required /><small className="field-hint">Từ 6 ký tự, tối đa 72 byte.</small></div>
-          <div className="form-group"><label htmlFor="conf-acc-pass">Xác nhận mật khẩu mới</label><PasswordInput id="conf-acc-pass" label="mật khẩu xác nhận" value={confirmAccountPassword} onChange={(event) => setConfirmAccountPassword(event.target.value)} autoComplete="new-password" required />{confirmAccountPassword && confirmAccountPassword !== newAccountPassword && <small className="field-error">Mật khẩu xác nhận chưa khớp.</small>}</div>
-          <button type="submit" className="settings-primary-button" disabled={loadingAccountPassword}>{loadingAccountPassword ? 'Đang cập nhật…' : 'Đổi mật khẩu'}</button>
-        </fieldset></form></section>
         <section className="settings-card" aria-labelledby="private-security-heading"><div className="card-header"><h3 id="private-security-heading">Vùng ghi chú riêng tư</h3><p>Mật khẩu riêng biệt để mã hóa và mở khóa ghi chú.</p></div><form className="card-body" onSubmit={handleSavePrivatePassword}>
           {privateStatusError && <div className="settings-status-error" role="alert"><p>{privateStatusError}</p><button type="button" className="settings-outline-button" onClick={() => { setCheckingPrivateStatus(true); setPrivateStatusError(''); setStatusReload((count) => count + 1); }}>Thử lại</button></div>}
           <fieldset disabled={loadingPrivatePassword || checkingPrivateStatus || Boolean(privateStatusError)}>
@@ -337,7 +287,7 @@ const SettingsPage = () => {
             <button type="submit" className="settings-primary-button" disabled={loadingPrivatePassword || checkingPrivateStatus || Boolean(privateStatusError)}>{loadingPrivatePassword ? 'Đang xử lý…' : hasPrivateSetup ? 'Đổi mật khẩu riêng tư' : 'Tạo mật khẩu riêng tư'}</button>
           </fieldset>
         </form></section>
-        <p className="settings-session-note"><Icon name="check" size={17} />Phiên đăng nhập được giữ khi bạn đóng và mở lại trình duyệt.</p>
+        <p className="settings-session-note"><Icon name="check" size={17} />Sổ tay mở trực tiếp. Nhập sai mật khẩu riêng tư lần thứ 6 sẽ bị khóa 10 phút.</p>
       </div>}
     </div>
   );

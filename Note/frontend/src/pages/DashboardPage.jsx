@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import noteService from '../services/noteService';
-import useAuth from '../hooks/useAuth';
 import DocumentDetailView from '../components/Notes/DocumentDetailView';
 import Toast from '../components/UI/Toast';
 import './DashboardPage.css';
@@ -19,7 +18,7 @@ const formatDate = (value) => {
 };
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user } = useContext(AppContext);
   const { preferences, updatePreferences } = useContext(AppContext);
   const { topicSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -262,6 +261,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     const handleShortcut = (event) => {
+      if (event.isComposing || event.keyCode === 229) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       const key = event.key.toLocaleLowerCase('vi');
       if (key === 'k') {

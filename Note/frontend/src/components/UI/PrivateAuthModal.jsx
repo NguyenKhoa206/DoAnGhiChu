@@ -1,18 +1,33 @@
-import React, { useRef, useState } from 'react';
-import authService from '../../services/authService';
+import React, { useEffect, useRef, useState } from 'react';
+import privateService from '../../services/privateService';
 import './PrivateAuthModal.css';
 import Icon from './Icon';
 
-const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
+const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false, initialLockedUntil }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState(() => initialLockedUntil || 0);
+  const [now, setNow] = useState(() => Date.now());
+  const remaining = Math.max(0, Math.ceil((lockedUntil - now) / 1000));
+  useEffect(() => {
+    if (initialLockedUntil !== undefined) return;
+    let active = true;
+    privateService.checkPrivatePasswordStatus().then((status) => { if (active) { setLockedUntil((previous) => Math.max(previous, status.lockedUntil || 0)); setNow(Date.now()); } }).catch(() => {});
+    return () => { active = false; };
+  }, [initialLockedUntil]);
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [lockedUntil]);
   const passwordInputRef = useRef(null);
 
   // Xử lý khi Submit Form
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading || remaining) return;
     setError('');
 
     // Validate dữ liệu cơ bản ở Frontend
@@ -36,8 +51,8 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
 
     try {
       const result = isFirstTime
-        ? await authService.setupPrivatePassword(password)
-        : await authService.verifyPrivatePassword(password);
+        ? await privateService.setupPrivatePassword(password)
+        : await privateService.verifyPrivatePassword(password);
       if (result?.success !== true || typeof result.privateToken !== 'string') {
         throw new Error('Không thể mở khóa vùng riêng tư. Vui lòng thử lại.');
       }
@@ -45,6 +60,10 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
       setPassword('');
       setConfirmPassword('');
     } catch (err) {
+      if (err.response?.data?.code === 'PRIVATE_RATE_LIMITED') {
+        setLockedUntil(err.response.data.lockedUntil);
+        setNow(Date.now());
+      }
       setPassword('');
       setConfirmPassword('');
       setError(
@@ -78,7 +97,8 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
                 : 'Vui lòng nhập mật khẩu riêng tư để mở khóa và xem danh sách ghi chú bảo mật.'}
             </p>
 
-            {error && <div className="auth-error-message" role="alert">{error}</div>}
+            {remaining > 0 && <div className="auth-error-message" role="status">Vùng riêng tư tạm khóa. Thử lại sau {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}.</div>}
+            {!remaining && error && <div className="auth-error-message" role="alert">{error}</div>}
 
             <div className="form-group">
               <label htmlFor="private-password">
@@ -92,7 +112,7 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
-                disabled={loading}
+                disabled={loading || Boolean(remaining)}
               />
             </div>
 
@@ -105,7 +125,7 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
                   placeholder="Nhập lại mật khẩu mới..."
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={loading || Boolean(remaining)}
                 />
               </div>
             )}
@@ -120,7 +140,7 @@ const PrivateAuthForm = ({ onClose, onSuccess, isFirstTime = false }) => {
             >
               Hủy
             </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button type="submit" className="btn-primary" disabled={loading || Boolean(remaining)}>
               {loading
                 ? 'Đang xử lý...'
                 : isFirstTime
