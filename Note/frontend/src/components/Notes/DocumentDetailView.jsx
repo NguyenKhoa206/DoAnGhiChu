@@ -147,8 +147,14 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     const selection = window.getSelection();
     if (!editor || !selection) return;
     if (selectionRef.current && editor.contains(selectionRef.current.commonAncestorContainer)) {
+      const saved = selectionRef.current;
+      const current = selection.rangeCount ? selection.getRangeAt(0) : null;
+      // Replacing an unchanged range clears the browser's pending typing styles.
+      // Keep it in place so another click can turn bold/italic/etc. off.
+      if (current && current.startContainer === saved.startContainer && current.startOffset === saved.startOffset
+        && current.endContainer === saved.endContainer && current.endOffset === saved.endOffset) return;
       selection.removeAllRanges();
-      selection.addRange(selectionRef.current);
+      selection.addRange(saved);
     } else {
       const range = document.createRange();
       range.selectNodeContents(editor);
@@ -216,7 +222,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
 
   const applyCommand = (command, value) => {
     if (readOnly || mediaBusyRef.current || composingRef.current) return;
-    editorRef.current?.focus();
+    editorRef.current?.focus({ preventScroll: true });
     restoreSelection();
     document.execCommand(command, false, value);
     rememberSelection();
@@ -227,7 +233,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     if (readOnly || mediaBusyRef.current || composingRef.current) return;
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus();
+    editor.focus({ preventScroll: true });
     restoreSelection();
     const selection = window.getSelection();
     if (!selection?.rangeCount) return;
@@ -256,7 +262,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     if (readOnly || mediaBusyRef.current || composingRef.current) return;
     const editor = editorRef.current;
     if (!editor) return;
-    editor.focus(); restoreSelection();
+    editor.focus({ preventScroll: true }); restoreSelection();
     const selection = window.getSelection();
     if (!selection?.rangeCount) return;
     const range = selection.getRangeAt(0);
@@ -273,12 +279,13 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   };
 
   const clearFormatting = () => {
-    if (readOnly || mediaBusyRef.current || !editorRef.current) return;
+    if (readOnly || mediaBusyRef.current || composingRef.current || !editorRef.current) return;
     const editor = editorRef.current;
-    editor.focus(); restoreSelection();
+    editor.focus({ preventScroll: true }); restoreSelection();
     const selection = window.getSelection();
     if (!selection?.rangeCount) return;
     const range = selection.getRangeAt(0);
+    const clearingCaret = range.collapsed;
     const blocks = selectedTextBlocks(editor, range);
     if (range.collapsed && blocks.length) {
       range.selectNodeContents(blocks[0]);
@@ -289,6 +296,13 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     }
     document.execCommand('removeFormat', false);
     document.execCommand('formatBlock', false, 'P');
+    // An empty caret has no text for removeFormat to clean. Reset typing styles
+    // explicitly so the next characters start as ordinary text.
+    if (clearingCaret) {
+      for (const command of ['bold', 'italic', 'underline', 'strikeThrough']) {
+        if (document.queryCommandState(command)) document.execCommand(command, false);
+      }
+    }
     rememberSelection(); syncContent(); setMessage('');
   };
 
