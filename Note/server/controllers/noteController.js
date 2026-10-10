@@ -42,10 +42,13 @@ const readTopicNames = async () => {
   if (typeof names !== 'object' || Array.isArray(names)) throw new Error('Tên bộ sưu tập phải là một đối tượng JSON.');
   return names;
 };
+// Restore the two legacy labels reported by the user when their original
+// display names were never saved. Explicitly saved names remain authoritative.
+const LEGACY_TOPIC_NAMES = new Map([['hoc', 'Học'], ['y-tuong', 'Ý tưởng']]);
 const topicNameOf = (slug, names) => {
   if (Object.hasOwn(names, slug) && typeof names[slug] === 'string' && names[slug].trim()) return names[slug];
-  // Older notebooks only have a filename; retain access until the user supplies
-  // the original display name instead of guessing Vietnamese diacritics.
+  if (LEGACY_TOPIC_NAMES.has(slug)) return LEGACY_TOPIC_NAMES.get(slug);
+  // For other old filenames, keep access until the user supplies their name.
   return slug.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 const readArray = async (filePath) => {

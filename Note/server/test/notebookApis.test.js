@@ -113,6 +113,38 @@ test('legacy collections remain accessible without a display-name file and can b
   assert.equal((await request('/notes/cong-viec')).body[0].id, 'legacy-note');
 });
 
+test('legacy Hoc and Y Tuong labels display accents without renaming files or changing notes', async () => {
+  const oldNotes = [{ id: 'old-hoc', title: 'Bài học cũ', content: '<p>Nội dung cần giữ</p>' }];
+  const ideaNotes = [{ id: 'old-idea', title: 'Ý tưởng cũ' }];
+  await fs.outputJson(path.join(temporary, 'notes', 'hoc.json'), oldNotes);
+  await fs.outputJson(path.join(temporary, 'notes', 'y-tuong.json'), ideaNotes);
+  for (const names of [null, '', '{}']) {
+    const namesPath = path.join(temporary, 'topics.json');
+    if (names === null) await fs.remove(namesPath);
+    else await fs.outputFile(namesPath, names);
+    const topics = (await request('/notes/topics')).body;
+    assert.equal(topics.find(topic => topic.slug === 'hoc').name, 'Học');
+    assert.equal(topics.find(topic => topic.slug === 'y-tuong').name, 'Ý tưởng');
+    assert.deepEqual(await fs.readJson(path.join(temporary, 'notes', 'hoc.json')), oldNotes);
+    assert.deepEqual(await fs.readJson(path.join(temporary, 'notes', 'y-tuong.json')), ideaNotes);
+  }
+  assert.equal((await request(`/notes/hoc/${oldNotes[0].id}`, 'DELETE')).status, 200);
+  assert.equal((await request('/notes/trash')).body[0].originalTopicName, 'Học');
+  assert.equal((await request(`/notes/trash/${oldNotes[0].id}/restore`, 'POST')).body.topicSlug, 'hoc');
+  assert.equal((await request('/notes/topics')).body.find(topic => topic.slug === 'hoc').name, 'Học');
+});
+
+test('explicit saved names take priority over legacy labels, including names without diacritics', async () => {
+  await fs.outputJson(path.join(temporary, 'notes', 'hoc.json'), []);
+  await fs.outputJson(path.join(temporary, 'notes', 'y-tuong.json'), []);
+  await fs.outputJson(path.join(temporary, 'topics.json'), { hoc: 'HOC', 'y-tuong': 'Ý tưởng sáng tạo' });
+  const topics = (await request('/notes/topics')).body;
+  assert.equal(topics.find(topic => topic.slug === 'hoc').name, 'HOC');
+  assert.equal(topics.find(topic => topic.slug === 'y-tuong').name, 'Ý tưởng sáng tạo');
+  assert.equal((await request('/notes/topics/hoc', 'PUT', { name: 'Học' })).status, 200);
+  assert.equal((await request('/notes/topics')).body.find(topic => topic.slug === 'hoc').name, 'Học');
+});
+
 test('concurrent collection creation and renaming retain every persisted display name', async () => {
   const created = await Promise.all(['Học tập', 'Công việc', 'Ý tưởng'].map(name => request('/notes/topics', 'POST', { name })));
   assert(created.every(result => result.status === 201));

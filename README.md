@@ -5,7 +5,7 @@
 ## Chức năng
 
 - Tạo, đọc, sửa, xóa ghi chú; phân loại theo chủ đề; tìm kiếm, ghim và yêu thích.
-- Tên bộ sưu tập giữ nguyên dấu tiếng Việt và cách viết sau khi tạo, đổi tên hoặc tải lại trang. Tên hiển thị được lưu riêng với mã dùng trong URL/tên file. Bộ sưu tập cũ chỉ còn tên file không dấu cần đổi tên có dấu một lần.
+- Tên bộ sưu tập giữ nguyên dấu tiếng Việt và cách viết sau khi tạo, đổi tên hoặc tải lại trang. Tên hiển thị được lưu riêng với mã dùng trong URL/tên file. Hai mục cũ `hoc` và `y-tuong` chưa lưu tên gốc tự hiển thị là **Học** và **Ý tưởng**; các tên cũ khác cần đổi tên có dấu một lần. Tên đã được người dùng lưu luôn được ưu tiên.
 - Soạn thảo có định dạng chữ, danh sách, checklist, hình ảnh, công cụ chỉnh ảnh và tệp đính kèm. Có nút × để gỡ ảnh/tệp.
 - Xuất ghi chú sang **TXT UTF-8** hoặc **Word DOCX**. File Word là định dạng Office thực, không phải HTML đổi đuôi thành DOC.
 - Lịch ghi chú, thùng rác, khôi phục và xóa vĩnh viễn.
