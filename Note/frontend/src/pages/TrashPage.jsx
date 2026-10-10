@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import noteService, { isPrivateLockedError } from '../services/noteService';
 import privateService from '../services/privateService';
 import PrivateAuthModal from '../components/UI/PrivateAuthModal';
+import ConfirmDialog from '../components/UI/ConfirmDialog';
 import Toast from '../components/UI/Toast';
 import { decryptText } from '../utils/crypto';
 import './TrashPage.css';
@@ -23,6 +24,9 @@ const TrashPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   const showToast = (message, type = 'info') => setToast({ show: true, message, type });
 
@@ -31,6 +35,7 @@ const TrashPage = () => {
     setPrivateToken('');
     setPrivateTrash([]);
     setPrivateReady(false);
+    setDeleteTarget(null);
   };
 
   useEffect(() => {
@@ -66,6 +71,8 @@ const TrashPage = () => {
   };
 
   const selectScope = async (nextScope) => {
+    if (deletingRef.current) return;
+    setDeleteTarget(null);
     setScope(nextScope);
     setError('');
     if (nextScope === 'public') {
@@ -94,6 +101,7 @@ const TrashPage = () => {
   };
 
   const handleRestore = async (note) => {
+    if (deletingRef.current) return;
     try {
       if (scope === 'private') {
         await noteService.restorePrivateTrashNote(note.id, privateToken);
@@ -110,20 +118,36 @@ const TrashPage = () => {
     }
   };
 
-  const handlePermanentDelete = async (note) => {
-    if (!window.confirm('Xóa vĩnh viễn ghi chú này? Thao tác này không thể hoàn tác.')) return;
+  const requestPermanentDelete = (note) => {
+    if (deletingRef.current) return;
+    setDeleteTarget({ id: note.id, title: note.title || 'Ghi chú không có tiêu đề', scope, privateToken });
+  };
+
+  const cancelPermanentDelete = () => {
+    if (!deletingRef.current) setDeleteTarget(null);
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!deleteTarget || deletingRef.current) return;
+    const target = deleteTarget;
+    deletingRef.current = true;
+    setDeleting(true);
     try {
-      if (scope === 'private') {
-        await noteService.permanentlyDeletePrivateTrashNote(note.id, privateToken);
-        setPrivateTrash((current) => current.filter((item) => item.id !== note.id));
+      if (target.scope === 'private') {
+        await noteService.permanentlyDeletePrivateTrashNote(target.id, target.privateToken);
+        setPrivateTrash((current) => current.filter((item) => item.id !== target.id));
       } else {
-        await noteService.permanentlyDeleteTrashNote(note.id);
-        setPublicTrash((current) => current.filter((item) => item.id !== note.id));
+        await noteService.permanentlyDeleteTrashNote(target.id);
+        setPublicTrash((current) => current.filter((item) => item.id !== target.id));
       }
+      setDeleteTarget(null);
       showToast('Đã xóa ghi chú vĩnh viễn.', 'success');
     } catch (actionError) {
       if (isPrivateLockedError(actionError)) lockPrivateTrash();
       showToast(actionError.response?.data?.message || 'Không thể xóa ghi chú.', 'error');
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
   };
 
@@ -136,6 +160,14 @@ const TrashPage = () => {
   return (
     <div className="trash-page">
       {toast.show && <Toast message={toast.message} type={toast.type} onClose={() => setToast((current) => ({ ...current, show: false }))} />}
+      {deleteTarget && <ConfirmDialog
+        title={deleteTarget.scope === 'private' ? 'Xóa vĩnh viễn ghi chú riêng tư?' : 'Xóa vĩnh viễn ghi chú?'}
+        message={`Ghi chú “${deleteTarget.title}” sẽ bị xóa vĩnh viễn. Thao tác này không thể hoàn tác.`}
+        confirmText="Xóa vĩnh viễn"
+        busy={deleting}
+        onCancel={cancelPermanentDelete}
+        onConfirm={handlePermanentDelete}
+      />}
       <PrivateAuthModal isOpen={authOpen} isFirstTime={firstTime} onClose={handleAuthClose} onSuccess={handlePrivateAuth} />
       <header className="trash-heading">
         <div><span className="trash-eyebrow">QUẢN LÝ ĐÃ XÓA</span><h2>Thùng rác</h2><p>Ghi chú đã xóa được tách riêng theo từng vùng dữ liệu.</p></div>
@@ -143,11 +175,11 @@ const TrashPage = () => {
       </header>
 
       <div className="trash-scope-tabs" role="tablist" aria-label="Phân loại thùng rác">
-        <button type="button" role="tab" aria-selected={scope === 'public'} className={scope === 'public' ? 'active' : ''} onClick={() => selectScope('public')}>Ghi chú thường <span>{publicTrash.length}</span></button>
-        <button type="button" role="tab" aria-selected={scope === 'private'} className={scope === 'private' ? 'active' : ''} onClick={() => selectScope('private')}><Icon name="lock" size={16} /> Ghi chú riêng tư {privateReady && <span>{privateTrash.length}</span>}</button>
+        <button type="button" role="tab" aria-selected={scope === 'public'} className={scope === 'public' ? 'active' : ''} disabled={deleting} onClick={() => selectScope('public')}>Ghi chú thường <span>{publicTrash.length}</span></button>
+        <button type="button" role="tab" aria-selected={scope === 'private'} className={scope === 'private' ? 'active' : ''} disabled={deleting} onClick={() => selectScope('private')}><Icon name="lock" size={16} /> Ghi chú riêng tư {privateReady && <span>{privateTrash.length}</span>}</button>
       </div>
 
-      {scope === 'private' && <div className="trash-private-banner"><Icon name="shield" size={21} /><div><strong>Thùng rác riêng tư được tách biệt</strong><p>Nội dung vẫn được mã hóa và chỉ giải mã sau khi xác thực mật khẩu riêng tư.</p></div>{privateReady && <button type="button" onClick={() => { lockPrivateTrash(); setScope('public'); }}>Khóa</button>}</div>}
+      {scope === 'private' && <div className="trash-private-banner"><Icon name="shield" size={21} /><div><strong>Thùng rác riêng tư được tách biệt</strong><p>Nội dung vẫn được mã hóa và chỉ giải mã sau khi xác thực mật khẩu riêng tư.</p></div>{privateReady && <button type="button" disabled={deleting} onClick={() => { lockPrivateTrash(); setScope('public'); }}>Khóa</button>}</div>}
       {error && <div className="trash-error" role="alert">{error}</div>}
       {loading ? <div className="trash-empty">Đang tải thùng rác…</div> : scope === 'private' && !privateReady ? (
         <div className="trash-empty"><Icon name="lock" size={32} /><strong>Thùng rác riêng tư đang khóa</strong><p>Nhập mật khẩu riêng tư để xem và khôi phục ghi chú.</p><button type="button" onClick={() => selectScope('private')}>Mở khóa</button></div>
@@ -156,7 +188,7 @@ const TrashPage = () => {
           {activeItems.map((note) => (
             <article className="trash-note" key={`${scope}-${note.id}`}>
               <div className="trash-note-copy"><div className="trash-note-title-row"><h3>{note.title || 'Ghi chú không có tiêu đề'}</h3><span className={scope === 'private' ? 'trash-private-tag' : 'trash-public-tag'}>{scope === 'private' ? 'Riêng tư' : 'Thường'}</span></div><p>{(note.content || 'Chưa có nội dung').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 220)}</p><small>Đã xóa: {note.deletedAt ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(note.deletedAt)) : '—'}{scope === 'public' && note.originalTopicSlug ? ` · Bộ sưu tập: ${note.originalTopicSlug}` : ''}</small></div>
-              <div className="trash-note-actions"><button type="button" className="trash-restore" onClick={() => handleRestore(note)}>Khôi phục</button><button type="button" className="trash-delete" onClick={() => handlePermanentDelete(note)}>Xóa vĩnh viễn</button></div>
+              <div className="trash-note-actions"><button type="button" className="trash-restore" disabled={deleting} onClick={() => handleRestore(note)}>Khôi phục</button><button type="button" className="trash-delete" disabled={deleting} onClick={() => requestPermanentDelete(note)}>Xóa vĩnh viễn</button></div>
             </article>
           ))}
         </div>
