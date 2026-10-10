@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import noteService from '../../services/noteService';
 import './TopicModal.css';
 import Icon from '../UI/Icon';
 
 const TopicModal = ({ isOpen, onClose, onSuccess, topicToEdit = null }) => {
-  const [topicName, setTopicName] = useState(() => topicToEdit?.name || topicToEdit?.title || '');
+  const initialName = topicToEdit?.name || topicToEdit?.title || '';
+  const nameInputRef = useRef(null);
+  const composingRef = useRef(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -12,13 +15,21 @@ const TopicModal = ({ isOpen, onClose, onSuccess, topicToEdit = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const trimmedName = topicName.trim();
+    if (composingRef.current || submittingRef.current) return;
+    // Let the browser/IME own the input while typing. Read the committed DOM
+    // value at submit so React state cannot overwrite or lag behind a diacritic.
+    const trimmedName = (nameInputRef.current?.value || '').normalize('NFC').trim();
 
     if (!trimmedName) {
       setError('Tên chủ đề không được để trống.');
       return;
     }
+    if (trimmedName.length > 80) {
+      setError('Tên chủ đề không được vượt quá 80 ký tự.');
+      return;
+    }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError('');
 
@@ -40,13 +51,17 @@ const TopicModal = ({ isOpen, onClose, onSuccess, topicToEdit = null }) => {
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Lỗi khi lưu chủ đề.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
+    if (composingRef.current || submittingRef.current) return;
     const topicId = topicToEdit?.id || topicToEdit?.slug;
-    if (!topicId || !window.confirm(`Xóa chủ đề “${topicName}” và toàn bộ ghi chú bên trong?`)) return;
+    const name = (nameInputRef.current?.value || initialName).normalize('NFC').trim();
+    if (!topicId || !window.confirm(`Xóa chủ đề “${name}” và toàn bộ ghi chú bên trong?`)) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError('');
     try {
@@ -56,6 +71,7 @@ const TopicModal = ({ isOpen, onClose, onSuccess, topicToEdit = null }) => {
     } catch (err) {
       setError(err.response?.data?.message || 'Không thể xóa chủ đề.');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -77,11 +93,21 @@ const TopicModal = ({ isOpen, onClose, onSuccess, topicToEdit = null }) => {
             <div className="form-group">
               <label htmlFor="topic-name">Tên chủ đề</label>
               <input
+                ref={nameInputRef}
                 id="topic-name"
                 type="text"
                 placeholder="Ví dụ: Học tập, Công việc, Ý tưởng..."
-                value={topicName}
-                onChange={(e) => setTopicName(e.target.value)}
+                defaultValue={initialName}
+                onInput={() => { if (error) setError(''); }}
+                onCompositionStart={() => { composingRef.current = true; }}
+                onCompositionEnd={() => { composingRef.current = false; }}
+                onBlur={() => { composingRef.current = false; }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (composingRef.current || event.nativeEvent.isComposing || event.keyCode === 229)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                }}
                 autoFocus
               />
             </div>

@@ -13,7 +13,7 @@
 - Bấm cả dòng/thẻ để mở ghi chú. Nút xóa nằm cạnh ghim/yêu thích và luôn có hộp xác nhận trước khi chuyển vào thùng rác.
 - Vùng riêng tư mã hóa nội dung bằng Web Crypto AES-GCM ở trình duyệt. Mật khẩu được băm bằng bcrypt ở backend; phiên mở khóa sử dụng JWT riêng, giữ trong bộ nhớ.
 - Hồ sơ cá nhân: tên hiển thị, email tùy chọn, ảnh đại diện. Cài đặt sáng/tối, màu chủ đạo, kiểu danh sách và khoảng cách hiển thị.
-- Hỗ trợ nhập tiếng Việt qua IME: không ghi lại DOM hoặc khôi phục vùng chọn trong lúc bộ gõ đang ghép dấu. Tiêu đề được chuẩn hóa Unicode NFC khi lưu.
+- Hỗ trợ nhập tiếng Việt qua IME trong trình soạn thảo và ô đặt/đổi tên bộ sưu tập: không ghi đè nội dung đang ghép dấu; ô tên lấy đúng nội dung hiện tại khi lưu và chặn gửi yêu cầu trong lúc bộ gõ đang ghép dấu. Tiêu đề và tên bộ sưu tập được chuẩn hóa Unicode NFC khi lưu.
 
 ## Hẹn nhắc việc
 
