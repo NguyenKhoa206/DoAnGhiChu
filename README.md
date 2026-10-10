@@ -8,9 +8,22 @@
 - Soạn thảo có định dạng chữ, danh sách, checklist, hình ảnh, công cụ chỉnh ảnh và tệp đính kèm. Có nút × để gỡ ảnh/tệp.
 - Xuất ghi chú sang **TXT UTF-8** hoặc **Word DOCX**. File Word là định dạng Office thực, không phải HTML đổi đuôi thành DOC.
 - Lịch ghi chú, thùng rác, khôi phục và xóa vĩnh viễn.
+- Hẹn nhắc ghi chú theo ngày giờ; bảng **Việc cần làm hôm nay** và thông báo máy tính khi được cấp quyền. Nhắc trễ khi mở lại app, không báo lặp sau khi tải lại trang.
+- Bấm cả dòng/thẻ để mở ghi chú. Nút xóa nằm cạnh ghim/yêu thích và luôn có hộp xác nhận trước khi chuyển vào thùng rác.
 - Vùng riêng tư mã hóa nội dung bằng Web Crypto AES-GCM ở trình duyệt. Mật khẩu được băm bằng bcrypt ở backend; phiên mở khóa sử dụng JWT riêng, giữ trong bộ nhớ.
 - Hồ sơ cá nhân: tên hiển thị, email tùy chọn, ảnh đại diện. Cài đặt sáng/tối, màu chủ đạo, kiểu danh sách và khoảng cách hiển thị.
 - Hỗ trợ nhập tiếng Việt qua IME: không ghi lại DOM hoặc khôi phục vùng chọn trong lúc bộ gõ đang ghép dấu. Tiêu đề được chuẩn hóa Unicode NFC khi lưu.
+
+## Hẹn nhắc việc
+
+1. Mở hoặc tạo ghi chú, chọn tab **Thêm**.
+2. Trong **Hẹn nhắc việc**, chọn ngày và giờ ở tương lai rồi nhấn **Lưu**. Giờ hiển thị theo múi giờ trên máy người dùng.
+3. Bấm biểu tượng chuông trên thanh đầu trang để xem việc hôm nay. Có thể chọn **Bật thông báo máy tính** và cho phép trong trình duyệt.
+4. Khi đến hạn, bảng nhắc tự hiện cùng nút **Mở ghi chú** và **Đã xem**. Chọn **Bỏ lịch nhắc** rồi **Lưu** để hủy.
+
+Giữ ứng dụng mở và backend hoạt động để nhận lời nhắc đúng giờ. Khi mở lại app, việc quá giờ chưa được nhắc sẽ hiện lên. Thông báo máy tính phụ thuộc quyền và khả năng hỗ trợ của trình duyệt; bảng trong app vẫn hoạt động nếu quyền bị từ chối. Ghi chú riêng tư chỉ hiện thông báo chung và yêu cầu mật khẩu khi mở nội dung.
+
+Ghi chú chưa chọn bộ sưu tập được lưu riêng, không tự tạo bộ sưu tập “Ghi chú”. Mục Nhật ký đã được bỏ; ghi chú trong hai chủ đề mặc định cũ `ghi-chu` và `nhat-ky` được chuyển sang chưa phân loại, giữ nguyên nội dung.
 
 ## Yêu cầu môi trường
 
@@ -76,7 +89,6 @@ Backend có `Note/server/.env.example`:
 | `Note/frontend/src/services/` | Gọi API ghi chú, hồ sơ và mật khẩu riêng tư. |
 | `Note/frontend/src/utils/` | Mã hóa, ảnh, định dạng, xuất DOCX/TXT và lịch âm. |
 | `Note/frontend/test/` | Unit test frontend. |
-| `Note/frontend/e2e/` | Kiểm thử giao diện desktop/mobile bằng Playwright. |
 | `Note/frontend/playwright.config.js` | Khởi chạy frontend/backend với dữ liệu test tạm. |
 | `Note/server/controllers/` | Xử lý ghi chú, hồ sơ và mật khẩu riêng tư. |
 | `Note/server/routes/` | Định tuyến API. |
@@ -85,7 +97,6 @@ Backend có `Note/server/.env.example`:
 | `Note/server/config/jwt.js` | Cấu hình khóa ký JWT. |
 | `Note/server/test/` | Kiểm thử API, lưu dữ liệu và bảo mật. |
 | `Note/server/data/` | Dữ liệu sổ tay trên máy chạy backend. |
-| `docs/KIEM_THU.md` | Checklist và cách kiểm tra các yêu cầu PM. |
 
 ## Lưu dữ liệu và khởi chạy với dữ liệu mới
 
@@ -95,6 +106,7 @@ Backend sử dụng `Note/server/data/` mặc định:
 | --- | --- |
 | `profile.json` | Hồ sơ, cài đặt và hash mật khẩu riêng tư. |
 | `notes/<chu-de>.json` | Danh sách ghi chú của từng chủ đề. |
+| `notes/_unfiled.json` | Ghi chú chưa phân loại; không xuất hiện như bộ sưu tập. |
 | `private.json` | Ghi chú riêng tư đã mã hóa. |
 | `trash.json` | Thùng rác ghi chú thường. |
 | `private-trash.json` | Thùng rác riêng tư. |
@@ -123,6 +135,9 @@ Lần mở đầu của phiên bản mới, nếu chỉ có một sổ tay trong
 | GET/PUT | `/api/users/profile` | Đọc/cập nhật hồ sơ sổ tay. |
 | PATCH | `/api/users/preferences` | Cập nhật giao diện. |
 | GET/POST/PUT/DELETE | `/api/notes/topics[/<id>]` | Quản lý chủ đề. |
+| GET/POST | `/api/notes` | Đọc tất cả/tạo ghi chú chưa phân loại. |
+| GET | `/api/notes/reminders` | Lịch nhắc; ghi chú riêng tư chỉ trả nhãn chung. |
+| POST | `/api/notes/reminders/<id>/deliver` | Gửi lời nhắc đã đến hạn một lần; lưu trạng thái chống báo lặp. |
 | GET/POST | `/api/notes/<chu-de>` | Đọc/tạo ghi chú thường. |
 | PUT/DELETE | `/api/notes/<chu-de>/<id>` | Sửa/xóa ghi chú thường. |
 | GET | `/api/auth/private-status` | Trạng thái mật khẩu và thời gian khóa. |
@@ -153,15 +168,7 @@ npm run lint
 npm run build
 ```
 
-Kiểm thử giao diện desktop/mobile:
-
-```bash
-cd Note/frontend
-npx playwright install chromium
-npm run test:e2e
-```
-
-Playwright tự khởi chạy backend và frontend; tắt các server đang dùng cổng 5000/5173 trước khi chạy. Dữ liệu được đặt trong thư mục tạm có tiền tố `noteapp-e2e-`, hoàn toàn tách dữ liệu thật. Các ca IME dùng cơ chế composition của Chromium; cần kiểm tra thêm Telex với UniKey/EVKey trên Windows bằng checklist PM.
+Kiểm tra thủ công cả chế độ bảng/lưới và màn hình mobile: mở ghi chú từ vùng nội dung, ghim/yêu thích, hủy/xác nhận xóa, hẹn giờ, đổi/hủy lịch nhắc, tải lại trang và mở lại app sau khi quá giờ. Kiểm tra Telex với UniKey/EVKey trên Windows.
 
 Bản build frontend nằm ở `Note/frontend/dist/`. `npm run preview` chỉ xem bản build, backend vẫn phải chạy.
 

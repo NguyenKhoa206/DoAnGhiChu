@@ -5,6 +5,8 @@ import { solarToVietnameseLunar } from '../utils/vietnameseLunar';
 import { getNoteBackgroundStyle, hasCustomNoteBackground } from '../utils/noteAppearance';
 import './CalendarPage.css';
 import Icon from '../components/UI/Icon';
+import ConfirmDialog from '../components/UI/ConfirmDialog';
+import { formatReminder } from '../utils/noteReminders';
 
 const keyOf = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const publicNotesOnly = (items) => (Array.isArray(items) ? items : []).filter((note) => !note.isPrivate && !note.private && !note.isEncrypted);
@@ -16,6 +18,8 @@ const CalendarPage = () => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const todayKey = keyOf(new Date());
   const isPastSelectedDate = selectedDate < todayKey;
   const reload = async () => {
@@ -42,8 +46,8 @@ const CalendarPage = () => {
   const firstOffset = (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7;
   const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const byDate = useMemo(() => notes.reduce((map, note) => {
-    const date = note.noteDate || (note.createdAt ? note.createdAt.slice(0, 10) : '');
-    if (date) map[date] = [...(map[date] || []), note];
+    const dates = new Set([note.noteDate || (note.createdAt ? keyOf(new Date(note.createdAt)) : ''), note.reminderAt ? keyOf(new Date(note.reminderAt)) : '']);
+    for (const date of dates) if (date) map[date] = [...(map[date] || []), note];
     return map;
   }, {}), [notes]);
   const selectedNotes = byDate[selectedDate] || [];
@@ -54,7 +58,7 @@ const CalendarPage = () => {
       setError(message);
       throw new Error(message);
     }
-    const topicSlug = data.topicSlug || editing?.topicSlug || 'ghi-chu';
+    const topicSlug = data.topicSlug || editing?.topicSlug || '';
     const payload = { ...data, noteDate: data.noteDate || selectedDate, topicSlug };
     try {
       const response = payload.id
@@ -75,8 +79,20 @@ const CalendarPage = () => {
       throw new Error(message);
     }
   };
+  const confirmDelete = async () => {
+    if (!noteToDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await noteService.deleteNote(noteToDelete.id, noteToDelete.topicSlug);
+      setNotes((items) => items.filter((note) => note.id !== noteToDelete.id));
+      setNoteToDelete(null); setEditorOpen(false); setEditing(null); setError('');
+    } catch (err) { setError(err.response?.data?.message || 'Không thể xóa ghi chú. Thử lại.'); }
+    finally { setDeleting(false); }
+  };
   const selectedLunarDate = solarToVietnameseLunar(new Date(`${selectedDate}T12:00:00`));
   return <div className="calendar-page">
+    {noteToDelete && <ConfirmDialog title="Xóa ghi chú?" message={`“${noteToDelete.title}” sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại sau.`} busy={deleting} onCancel={() => setNoteToDelete(null)} onConfirm={confirmDelete} />}
+    {editorOpen && error && <p className="calendar-error" role="alert">{error}</p>}
     {editorOpen ? <DocumentDetailView
       key={editing?.id || `new-${selectedDate}`}
       note={editing || { noteDate: selectedDate }}
@@ -85,6 +101,7 @@ const CalendarPage = () => {
       readOnly={isPastSelectedDate}
       onBack={() => { setEditorOpen(false); setEditing(null); }}
       onSave={(noteId, changes) => save({ ...changes, id: noteId || undefined })}
+      onDelete={(noteId) => setNoteToDelete(notes.find((note) => note.id === noteId))}
     /> : <>
     <header className="calendar-heading">
       <div><p className="calendar-kicker">SỔ TAY THEO THỜI GIAN</p><h2>Lịch ghi chú</h2><p>Xem lại ý tưởng và ghi chú theo từng ngày.</p></div>
@@ -117,7 +134,7 @@ const CalendarPage = () => {
     </section>
     <section className="calendar-day-notes">
       <div className="selected-day-heading"><div><span className="calendar-kicker">GHI CHÚ TRONG NGÀY</span><h3>{new Intl.DateTimeFormat('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${selectedDate}T12:00:00`))}</h3><p className="selected-day-lunar">Âm lịch: ngày {selectedLunarDate.day}, tháng {selectedLunarDate.month}{selectedLunarDate.isLeapMonth ? ' nhuận' : ''}, năm {selectedLunarDate.year}</p></div>{!isPastSelectedDate && <button onClick={() => { setEditing(null); setEditorOpen(true); }}><Icon name="plus" size={17} /> Tạo ghi chú</button>}</div>
-      {selectedNotes.length ? <div className="calendar-note-list">{selectedNotes.map((note) => <button className={"calendar-note-card" + (hasCustomNoteBackground(note) ? " custom-paper" : "")} key={note.id} style={getNoteBackgroundStyle(note)} onClick={() => { setEditing(note); setEditorOpen(true); }}><strong>{note.title}</strong><span>{(note.content || 'Chưa có nội dung').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 180)}</span><small>{topics.find((topic) => topic.slug === note.topicSlug)?.name || 'Ghi chú'}</small></button>)}</div> : <div className="calendar-empty">{isPastSelectedDate ? 'Ngày này không có ghi chú để xem lại.' : <>Chưa có ghi chú trong ngày này. <button onClick={() => { setEditing(null); setEditorOpen(true); }}>Tạo ghi chú đầu tiên</button></>}</div>}
+      {selectedNotes.length ? <div className="calendar-note-list">{selectedNotes.map((note) => <button className={"calendar-note-card" + (hasCustomNoteBackground(note) ? " custom-paper" : "")} key={note.id} style={getNoteBackgroundStyle(note)} onClick={() => { setEditing(note); setEditorOpen(true); }}><strong>{note.title}</strong><span>{(note.content || 'Chưa có nội dung').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 180)}</span>{note.reminderAt && <small><Icon name="bell" size={13} /> {formatReminder(note.reminderAt)}</small>}<small>{topics.find((topic) => topic.slug === note.topicSlug)?.name || 'Chưa phân loại'}</small></button>)}</div> : <div className="calendar-empty">{isPastSelectedDate ? 'Ngày này không có ghi chú để xem lại.' : <>Chưa có ghi chú trong ngày này. <button onClick={() => { setEditing(null); setEditorOpen(true); }}>Tạo ghi chú đầu tiên</button></>}</div>}
     </section>
     </>}
   </div>;

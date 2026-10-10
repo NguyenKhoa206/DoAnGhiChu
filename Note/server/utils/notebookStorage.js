@@ -4,10 +4,28 @@ const { readJsonFile, writeJsonFile } = require('./read_write');
 
 const DATA_DIR = path.resolve(process.env.NOTEAPP_DATA_DIR || path.join(__dirname, '../data'));
 const NOTEBOOK_ID = 'local-notebook';
+const UNFILED_FILE = '_unfiled.json';
 const getNotebookDir = () => DATA_DIR;
 const getProfilePath = () => path.join(DATA_DIR, 'profile.json');
 const DEFAULT_PREFERENCES = { theme: 'light', primaryColor: '#2463eb', noteLayout: 'table', noteSort: 'newest', density: 'comfortable' };
 let preparing = Promise.resolve();
+
+// Remove the former automatic collections while retaining every saved note.
+const migrateDefaultTopics = async () => {
+  const notesDir = path.join(DATA_DIR, 'notes');
+  const target = path.join(notesDir, UNFILED_FILE);
+  for (const slug of ['ghi-chu', 'nhat-ky']) {
+    const source = path.join(notesDir, `${slug}.json`);
+    if (!await fs.pathExists(source)) continue;
+    const previous = await readJsonFile(source) || [];
+    const unfiled = await readJsonFile(target) || [];
+    if (!Array.isArray(previous) || !Array.isArray(unfiled)) throw new Error('Dữ liệu ghi chú phải là một mảng JSON.');
+    // If interrupted after writing, running this migration again is safe.
+    const ids = new Set(unfiled.map((note) => note.id));
+    await writeJsonFile(target, [...unfiled, ...previous.filter((note) => !ids.has(note.id))]);
+    await fs.remove(source);
+  }
+};
 
 // Import a single legacy notebook once; keep its source files as a backup.
 const migrateLegacyNotebook = async () => {
@@ -47,10 +65,11 @@ const prepareNotebook = () => {
     delete profile.role;
     if (JSON.stringify(previous) !== JSON.stringify(profile)) await writeJsonFile(getProfilePath(), profile);
     await fs.ensureDir(path.join(DATA_DIR, 'notes'));
+    await migrateDefaultTopics();
     return profile;
   });
   preparing = operation.catch(() => {});
   return operation;
 };
 
-module.exports = { DATA_DIR, NOTEBOOK_ID, getNotebookDir, getProfilePath, prepareNotebook };
+module.exports = { DATA_DIR, NOTEBOOK_ID, UNFILED_FILE, getNotebookDir, getProfilePath, prepareNotebook };

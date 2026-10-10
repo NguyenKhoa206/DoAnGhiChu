@@ -4,6 +4,7 @@ const { randomUUID } = require('crypto');
 const { readJsonFile, writeJsonFile } = require('../utils/read_write');
 const { cleanNoteContent } = require('../utils/noteContent');
 const { isValidNoteBackgroundImage } = require('../utils/noteBackground');
+const { normalizeReminder, reminderError } = require('../utils/noteReminder');
 const isTopicSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 80;
 const validDate = (value) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -27,7 +28,9 @@ const attachmentsAreValid = (items) => items === undefined || (
 // Inline images are inside the encrypted content, rather than attachment metadata.
 const MAX_PRIVATE_CONTENT_LENGTH = 8_000_000;
 
-const { getNotebookDir } = require('../utils/notebookStorage');
+const { getNotebookDir, UNFILED_FILE } = require('../utils/notebookStorage');
+const topicOfFile = (fileName) => fileName === UNFILED_FILE ? '' : fileName.replace(/\.json$/, '');
+const fileOfTopic = (slug) => slug && !['ghi-chu', 'nhat-ky'].includes(slug) ? `${slug}.json` : UNFILED_FILE;
 const getUserNotesDir = () => path.join(getNotebookDir(), 'notes');
 const getUserTrashFilePath = () => path.join(getNotebookDir(), 'trash.json');
 const getUserPrivateFilePath = () => path.join(getNotebookDir(), 'private.json');
@@ -74,7 +77,7 @@ const noteController = {
 
       if (!await fs.pathExists(notesDir)) return res.status(200).json([]);
       const files = await fs.readdir(notesDir);
-      const jsonFiles = files.filter((f) => f.endsWith('.json'));
+      const jsonFiles = files.filter((f) => f.endsWith('.json') && f !== UNFILED_FILE);
 
       const topics = jsonFiles.map((fileName) => {
         const slug = fileName.replace('.json', '');
@@ -109,6 +112,7 @@ const noteController = {
 
       const slug = slugify(name);
       if (!isTopicSlug(slug)) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
+      if (['ghi-chu', 'nhat-ky'].includes(slug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
       const notesDir = getUserNotesDir(userId);
       await fs.ensureDir(notesDir);
 
@@ -172,6 +176,7 @@ const noteController = {
       if (name.length > 80 || !isTopicSlug(oldSlug)) return res.status(400).json({ message: 'Tên hoặc mã chủ đề không hợp lệ.' });
       const newSlug = slugify(name);
       if (!newSlug) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
+      if (['ghi-chu', 'nhat-ky'].includes(newSlug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
       const notesDir = getUserNotesDir(userId);
       const oldPath = path.join(notesDir, `${oldSlug}.json`);
       const newPath = path.join(notesDir, `${newSlug}.json`);
@@ -207,10 +212,10 @@ const noteController = {
 
       if (topic) {
         // Lấy ghi chú của 1 chủ đề cụ thể
-        const filePath = path.join(notesDir, `${topic}.json`);
+        const filePath = path.join(notesDir, fileOfTopic(topic));
         if (await fs.pathExists(filePath)) {
           const topicNotes = await readArray(filePath);
-          allNotes = (topicNotes || []).map((n) => ({ ...n, topicSlug: topic }));
+          allNotes = (topicNotes || []).map((n) => ({ ...n, topicSlug: topicOfFile(fileOfTopic(topic)) }));
         }
       } else {
         // Tổng hợp ghi chú từ TẤT CẢ các file .json chủ đề hiện có
@@ -218,7 +223,7 @@ const noteController = {
         const jsonFiles = files.filter((f) => f.endsWith('.json'));
 
         for (const fileName of jsonFiles) {
-          const topicSlug = fileName.replace('.json', '');
+          const topicSlug = topicOfFile(fileName);
           const filePath = path.join(notesDir, fileName);
           const topicNotes = await readArray(filePath);
 
@@ -243,7 +248,7 @@ const noteController = {
   createNote: async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { title = '', content = '', noteDate, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
+      const { title = '', content = '', noteDate, reminderAt, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
       const topicSlug = req.params?.topic ?? req.body.topicSlug;
 
       if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
@@ -255,12 +260,15 @@ const noteController = {
       if ((isFavorite !== undefined && typeof isFavorite !== 'boolean') || (isPinned !== undefined && typeof isPinned !== 'boolean')) return res.status(400).json({ message: 'Trạng thái ghim hoặc yêu thích không hợp lệ.' });
       if (!isValidNoteBackgroundImage(backgroundImage)) return res.status(400).json({ message: 'Ảnh nền không hợp lệ hoặc vượt quá 800 KB.' });
       if (!attachmentsAreValid(attachments)) return res.status(400).json({ message: 'Tệp đính kèm không đúng định dạng hoặc vượt giới hạn 6 tệp, 800 KB mỗi tệp.' });
+      const scheduleError = reminderError(reminderAt);
+      if (scheduleError) return res.status(400).json({ message: scheduleError });
 
       const notesDir = getUserNotesDir(userId);
       await fs.ensureDir(notesDir);
 
-      const targetSlug = slugify(topicSlug || 'ghi-chu') || 'ghi-chu';
-      const filePath = path.join(notesDir, `${targetSlug}.json`);
+      const targetFile = fileOfTopic(slugify(topicSlug || ''));
+      const targetSlug = topicOfFile(targetFile);
+      const filePath = path.join(notesDir, targetFile);
 
       let notes = [];
       if (await fs.pathExists(filePath)) {
@@ -277,6 +285,8 @@ const noteController = {
         attachments: cleanAttachments(attachments),
         isFavorite: isFavorite === true,
         isPinned: isPinned === true,
+        reminderAt: normalizeReminder(reminderAt),
+        reminderNotifiedAt: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -299,7 +309,7 @@ const noteController = {
     try {
       const userId = req.user.userId;
       const { noteId } = req.params;
-      const { title, content, noteDate, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
+      const { title, content, noteDate, reminderAt, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
       const topic = req.params.topic;
       if (topic !== undefined && !isTopicSlug(topic)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
       if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.trim().length > 160)) {
@@ -315,7 +325,7 @@ const noteController = {
         return res.status(404).json({ message: 'Không tìm thấy ghi chú cần sửa.' });
       }
       const files = await fs.readdir(notesDir);
-      const jsonFiles = files.filter((f) => f.endsWith('.json') && (topic === undefined || f === `${topic}.json`));
+      const jsonFiles = files.filter((f) => f.endsWith('.json') && (topic === undefined || f === fileOfTopic(topic)));
 
       let found = false;
       let updatedNote = null;
@@ -326,6 +336,9 @@ const noteController = {
 
         const index = notes.findIndex((n) => n.id === noteId);
         if (index !== -1) {
+          const scheduleError = reminderAt !== undefined ? reminderError(reminderAt, notes[index].reminderAt) : '';
+          if (scheduleError) return res.status(400).json({ message: scheduleError });
+          const nextReminder = reminderAt === undefined ? notes[index].reminderAt || null : normalizeReminder(reminderAt);
           found = true;
           notes[index] = {
             ...notes[index],
@@ -337,10 +350,12 @@ const noteController = {
             attachments: attachments !== undefined ? cleanAttachments(attachments) : (notes[index].attachments || []),
             isFavorite: isFavorite !== undefined ? isFavorite : notes[index].isFavorite === true,
             isPinned: isPinned !== undefined ? isPinned : notes[index].isPinned === true,
+            reminderAt: nextReminder,
+            reminderNotifiedAt: nextReminder === (notes[index].reminderAt || null) ? notes[index].reminderNotifiedAt || null : null,
             updatedAt: new Date().toISOString(),
           };
 
-          updatedNote = { ...notes[index], topicSlug: fileName.replace(/\.json$/, '') };
+          updatedNote = { ...notes[index], topicSlug: topicOfFile(fileName) };
           await writeJsonFile(filePath, notes);
           break;
         }
@@ -374,7 +389,7 @@ const noteController = {
         return res.status(404).json({ message: 'Không tìm thấy ghi chú để xóa.' });
       }
       const files = await fs.readdir(notesDir);
-      const jsonFiles = files.filter((f) => f.endsWith('.json') && (topic === undefined || f === `${topic}.json`));
+      const jsonFiles = files.filter((f) => f.endsWith('.json') && (topic === undefined || f === fileOfTopic(topic)));
 
       let deletedNote = null;
       let activeFilePath = null;
@@ -386,7 +401,7 @@ const noteController = {
 
         const note = notes.find((item) => item.id === noteId);
         if (note) {
-          deletedNote = { ...note, originalTopicSlug: fileName.replace(/\.json$/, ''), deletedAt: new Date().toISOString() };
+          deletedNote = { ...note, originalTopicSlug: topicOfFile(fileName), deletedAt: new Date().toISOString() };
           activeFilePath = filePath;
           remainingNotes = notes.filter((item) => item.id !== noteId);
           break;
@@ -432,10 +447,11 @@ const noteController = {
       const index = trash.findIndex((item) => item.id === req.params.noteId);
       if (index < 0) return res.status(404).json({ message: 'Không tìm thấy ghi chú trong thùng rác.' });
       const [note] = trash.splice(index, 1);
-      const targetSlug = isTopicSlug(note.originalTopicSlug) ? note.originalTopicSlug : 'hoc-tap';
+      const targetFile = fileOfTopic(isTopicSlug(note.originalTopicSlug) ? note.originalTopicSlug : '');
+      const targetSlug = topicOfFile(targetFile);
       const notesDir = getUserNotesDir(userId);
       await fs.ensureDir(notesDir);
-      const targetPath = path.join(notesDir, `${targetSlug}.json`);
+      const targetPath = path.join(notesDir, targetFile);
       const targetNotes = await readArray(targetPath);
       const { deletedAt, originalTopicSlug, ...restoredNote } = note;
       targetNotes.unshift(restoredNote);
@@ -496,7 +512,7 @@ const noteController = {
   createPrivateNote: async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { title, content, metadata } = req.body; // Dữ liệu đã được mã hóa ở Client
+      const { title, content, metadata, reminderAt } = req.body; // Dữ liệu đã được mã hóa ở Client
       if (typeof title !== 'string' || !title || title.length > 1_000_000
         || typeof content !== 'string' || content.length > MAX_PRIVATE_CONTENT_LENGTH) {
         return res.status(400).json({ message: 'Tiêu đề hoặc nội dung ghi chú riêng tư không hợp lệ.' });
@@ -504,6 +520,9 @@ const noteController = {
       if (metadata !== undefined && (typeof metadata !== 'string' || metadata.length > 8_000_000)) {
         return res.status(400).json({ message: 'Dữ liệu bổ sung của ghi chú riêng tư vượt quá giới hạn.' });
       }
+
+      const scheduleError = reminderError(reminderAt);
+      if (scheduleError) return res.status(400).json({ message: scheduleError });
 
       const privateFilePath = getUserPrivateFilePath(userId);
       let privateNotes = [];
@@ -517,6 +536,8 @@ const noteController = {
         title,
         content,
         ...(typeof metadata === 'string' ? { metadata } : {}),
+        reminderAt: normalizeReminder(reminderAt),
+        reminderNotifiedAt: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -539,7 +560,7 @@ const noteController = {
     try {
       const userId = req.user.userId;
       const { noteId } = req.params;
-      const { title, content, metadata } = req.body;
+      const { title, content, metadata, reminderAt } = req.body;
       if ((title !== undefined && (typeof title !== 'string' || !title || title.length > 1_000_000))
         || (content !== undefined && (typeof content !== 'string' || content.length > MAX_PRIVATE_CONTENT_LENGTH))) {
         return res.status(400).json({ message: 'Tiêu đề hoặc nội dung ghi chú riêng tư không hợp lệ.' });
@@ -560,11 +581,17 @@ const noteController = {
         return res.status(404).json({ message: 'Không tìm thấy ghi chú riêng tư cần sửa.' });
       }
 
+      const scheduleError = reminderAt !== undefined ? reminderError(reminderAt, privateNotes[index].reminderAt) : '';
+      if (scheduleError) return res.status(400).json({ message: scheduleError });
+      const nextReminder = reminderAt === undefined ? privateNotes[index].reminderAt || null : normalizeReminder(reminderAt);
+
       privateNotes[index] = {
         ...privateNotes[index],
         title: title !== undefined ? title : privateNotes[index].title,
         content: content !== undefined ? content : privateNotes[index].content,
         ...(typeof metadata === 'string' ? { metadata } : {}),
+        reminderAt: nextReminder,
+        reminderNotifiedAt: nextReminder === (privateNotes[index].reminderAt || null) ? privateNotes[index].reminderNotifiedAt || null : null,
         updatedAt: new Date().toISOString(),
       };
 
@@ -660,4 +687,13 @@ const noteController = {
   },
 };
 
+const { withNotebookMutation } = require('../utils/notebookMutation');
+const privateAuthMiddleware = require('../middleware/privateAuthMiddleware');
+for (const action of ['createTopic', 'updateTopic', 'deleteTopic', 'createNote', 'updateNote', 'deleteNote',
+  'restoreTrashNote', 'permanentlyDeleteTrashNote', 'createPrivateNote', 'updatePrivateNote',
+  'deletePrivateNote', 'restorePrivateTrashNote', 'permanentlyDeletePrivateTrashNote']) {
+  const handler = noteController[action];
+  noteController[action] = (req, res) => withNotebookMutation(() => action.includes('Private')
+    ? privateAuthMiddleware(req, res, () => handler(req, res)) : handler(req, res));
+}
 module.exports = noteController;

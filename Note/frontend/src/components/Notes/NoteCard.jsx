@@ -28,7 +28,7 @@ const NoteCard = ({ note, onSelect, onEdit, onDelete, isPrivate = false }) => {
   };
 
   return (
-    <article className={`note-card ${isPrivate ? 'private-card' : ''}${hasCustomNoteBackground(note) ? ' custom-paper' : ''}`} style={getNoteBackgroundStyle(note)} onClick={() => onSelect && onSelect(note)}>
+    <article className={`note-card ${isPrivate ? 'private-card' : ''}${hasCustomNoteBackground(note) ? ' custom-paper' : ''}`} tabIndex={0} aria-label={`Mở ghi chú ${title}`} style={getNoteBackgroundStyle(note)} onClick={() => onSelect?.(note)} onKeyDown={(event) => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); onSelect?.(note); } }}>
       <div className="note-card-header">
         <button type="button" className="note-card-title">
           {title || 'Ghi chú không có tiêu đề'}

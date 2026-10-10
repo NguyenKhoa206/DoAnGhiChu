@@ -8,8 +8,11 @@ import Toast from '../components/UI/Toast';
 import { encryptText, decryptText } from '../utils/crypto';
 import './PrivateNotePage.css';
 import Icon from '../components/UI/Icon';
+import ConfirmDialog from '../components/UI/ConfirmDialog';
+import { useSearchParams } from 'react-router-dom';
 
 const PrivateNotePage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAuthenticatedPrivate, setIsAuthenticatedPrivate] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [initialLockedUntil, setInitialLockedUntil] = useState(0);
@@ -26,6 +29,8 @@ const PrivateNotePage = () => {
   const [editingNote, setEditingNote] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const showToast = (message, type = 'info') => {
     setToast({ show: true, message, type });
@@ -39,6 +44,7 @@ const PrivateNotePage = () => {
     setSelectedNote(null);
     setEditingNote(null);
     setIsEditorOpen(false);
+    setNoteToDelete(null);
   };
 
   // 1. Kiểm tra xem user đã thiết lập mật khẩu vùng riêng tư lần nào chưa
@@ -61,6 +67,18 @@ const PrivateNotePage = () => {
 
     checkPrivateSetup();
   }, []);
+
+  useEffect(() => {
+    const noteId = searchParams.get('open');
+    if (!noteId || !isAuthenticatedPrivate || loading) return;
+    const timer = window.setTimeout(() => {
+      const note = notes.find((item) => item.id === noteId);
+      if (note) { setSelectedNote(note); setIsEditorOpen(false); }
+      const next = new URLSearchParams(searchParams); next.delete('open');
+      setSearchParams(next, { replace: true });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [searchParams, setSearchParams, isAuthenticatedPrivate, loading, notes]);
 
   // 2. Tải và giải mã danh sách ghi chú riêng tư từ private.json
   const fetchAndDecryptPrivateNotes = async (secretKey, accessToken = privateToken) => {
@@ -118,6 +136,7 @@ const PrivateNotePage = () => {
         title: encryptedTitle,
         content: encryptedContent,
         metadata: encryptedMetadata,
+        reminderAt: noteData.reminderAt || null,
       };
 
       let savedResponse;
@@ -145,18 +164,22 @@ const PrivateNotePage = () => {
   };
 
   // 5. Xóa ghi chú riêng tư
-  const handleDeletePrivateNote = async (noteId) => {
-    if (!window.confirm('Xóa ghi chú riêng tư này?')) return false;
+  const requestDeletePrivateNote = (noteId) => {
+    const note = notes.find((item) => item.id === noteId);
+    if (note) setNoteToDelete(note);
+  };
+  const confirmDeletePrivateNote = async () => {
+    if (!noteToDelete || deleting) return;
+    setDeleting(true);
     try {
-      await noteService.deletePrivateNote(noteId, privateToken);
+      await noteService.deletePrivateNote(noteToDelete.id, privateToken);
       showToast('Đã xóa ghi chú riêng tư!', 'success');
+      setNoteToDelete(null); setSelectedNote(null); setEditingNote(null); setIsEditorOpen(false);
       await fetchAndDecryptPrivateNotes(privatePassword);
-      return true;
     } catch (error) {
       if (isPrivateLockedError(error)) lockPrivateSession();
       showToast(error.response?.data?.message || 'Lỗi khi xóa ghi chú riêng tư.', 'error');
-      return false;
-    }
+    } finally { setDeleting(false); }
   };
 
   if (checkingAuthSetup) {
@@ -165,6 +188,7 @@ const PrivateNotePage = () => {
 
   return (
     <div className="private-note-page-container">
+      {noteToDelete && <ConfirmDialog title="Xóa ghi chú riêng tư?" message={`“${noteToDelete.title}” sẽ được chuyển vào thùng rác riêng tư. Bạn có thể khôi phục lại sau.`} busy={deleting} onCancel={() => setNoteToDelete(null)} onConfirm={confirmDeletePrivateNote} />}
       {toast.show && (
         <Toast
           message={toast.message}
@@ -231,7 +255,7 @@ const PrivateNotePage = () => {
                 setEditingNote(note);
                 setIsEditorOpen(true);
               }}
-              onDeleteNote={handleDeletePrivateNote}
+              onDeleteNote={requestDeletePrivateNote}
               onCreateNote={() => {
                 setSelectedNote(null);
                 setEditingNote(null);
@@ -250,12 +274,7 @@ const PrivateNotePage = () => {
           backLabel="Ghi chú riêng tư"
           onBack={() => { setSelectedNote(null); setIsEditorOpen(false); setEditingNote(null); }}
           onSave={(noteId, changes) => handleSavePrivateNote({ ...changes, id: noteId || undefined })}
-          onDelete={async (noteId) => {
-            if (await handleDeletePrivateNote(noteId)) {
-              setSelectedNote(null);
-              setIsEditorOpen(false);
-            }
-          }}
+          onDelete={requestDeletePrivateNote}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import ProfileMenu from '../User/ProfileMenu';
 import Icon from '../UI/Icon';
 import { AppContext } from '../../context/AppContextBase';
 import './MainLayout.css';
+import ReminderCenter from '../Notes/ReminderCenter';
 
 const MainLayout = () => {
   // Đóng/mở sidebar trên giao diện mobile/tablet
@@ -55,6 +56,7 @@ const MainLayout = () => {
           </div>
 
           <div className="header-right">
+            <ReminderCenter />
             {/* Component Menu tài khoản người dùng */}
             <ProfileMenu />
           </div>

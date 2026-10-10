@@ -8,6 +8,7 @@ import NoteFormattingTools from './NoteFormattingTools';
 import { createFileChip, decorateNoteFiles, removeFileLinks } from '../../utils/noteFiles';
 import { DEFAULT_TEXT_FORMAT, readTextFormat, selectedTextBlocks, styleSelectedText } from '../../utils/noteRichText';
 import { clipboardImageFiles, createAttachmentId, formatImageBytes, imageUploadBudget, MAX_IMAGE_BYTES, MAX_NOTE_MEDIA, noteMediaSizeError, optimizeNoteImage, readFileDataUrl } from '../../utils/noteImages';
+import { formatReminder, reminderInstant, toLocalReminderInput } from '../../utils/noteReminders';
 
 const formatDate = (value) => value
   ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(value))
@@ -40,6 +41,8 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   const [backgroundColor, setBackgroundColor] = useState(draft?.backgroundColor ?? note.backgroundColor ?? '#fffdf8');
   const [backgroundImage, setBackgroundImage] = useState(draft?.backgroundImage ?? note.backgroundImage ?? '');
   const [noteDate, setNoteDate] = useState(() => draft?.noteDate ?? note.noteDate ?? getLocalDate());
+  const [reminderInput, setReminderInput] = useState(() => toLocalReminderInput(draft?.reminderAt !== undefined ? draft.reminderAt : note.reminderAt));
+  const [reminderValidation, setReminderValidation] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageSelectionVersion, setImageSelectionVersion] = useState(0);
   const [imageEditorWidth, setImageEditorWidth] = useState(600);
@@ -109,7 +112,8 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     || JSON.stringify(attachments) !== JSON.stringify(documentNote.attachments || [])
     || backgroundColor !== (documentNote.backgroundColor || '#fffdf8')
     || backgroundImage !== (documentNote.backgroundImage || '')
-    || noteDate !== (documentNote.noteDate || initialNoteDate);
+    || noteDate !== (documentNote.noteDate || initialNoteDate)
+    || reminderInput !== toLocalReminderInput(documentNote.reminderAt);
 
   const rememberSelection = () => {
     if (composingRef.current) return;
@@ -514,7 +518,13 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
         titleInputRef.current?.focus();
         return;
       }
-      const changes = { title: savedTitle, content: editorRef.current?.innerHTML ?? content, noteDate, attachments, backgroundColor, backgroundImage };
+      const reminderAt = reminderInstant(reminderInput, documentNote.reminderAt);
+      if (reminderAt === undefined || (reminderAt && reminderAt !== documentNote.reminderAt && new Date(reminderAt).getTime() <= Date.now())) {
+        setActiveTab('Thêm');
+        setReminderValidation(reminderAt === undefined ? 'Vui lòng chọn đầy đủ ngày và giờ nhắc.' : 'Thời gian nhắc phải ở trong tương lai.');
+        return;
+      }
+      const changes = { title: savedTitle, content: editorRef.current?.innerHTML ?? content, noteDate, reminderAt, attachments, backgroundColor, backgroundImage };
       const sizeError = noteMediaSizeError({ ...changes, isPrivate });
       if (sizeError) {
         setMediaFeedback({ text: sizeError, error: true });
@@ -641,6 +651,19 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
           </div>}
           {selectedTab === 'Thêm' && <div className="document-inspector-content">
             <section className="inspector-section"><h3>Ngày ghi chú</h3><input className="inspector-date-input" type="date" value={noteDate} onChange={(event) => { setNoteDate(event.target.value); onDraftChange?.(documentNote.id, { noteDate: event.target.value }); }} /></section>
+            <section className="inspector-section document-reminder-section">
+              <h3><Icon name="bell" size={16} /> Hẹn nhắc việc</h3>
+              <label className="inspector-hint" htmlFor={`${saveErrorId}-reminder`}>Ngày và giờ nhắc</label>
+              <input id={`${saveErrorId}-reminder`} className="inspector-date-input" type="datetime-local" aria-label="Ngày và giờ nhắc" aria-invalid={Boolean(reminderValidation)} value={reminderInput} onChange={(event) => {
+                const next = event.target.value;
+                setReminderInput(next); setReminderValidation(''); setMessage('');
+                onDraftChange?.(documentNote.id, { reminderAt: reminderInstant(next, documentNote.reminderAt) ?? null });
+              }} />
+              {reminderValidation && <p className="document-field-error" role="alert">{reminderValidation}</p>}
+              {reminderInput && <button className="inspector-background-clear" type="button" onClick={() => { setReminderInput(''); setReminderValidation(''); setMessage(''); onDraftChange?.(documentNote.id, { reminderAt: null }); }}>Bỏ lịch nhắc</button>}
+              <p className="inspector-hint">Nhấn Lưu để đặt lịch. Giờ nhắc theo máy của bạn. Giữ ứng dụng mở để nhận thông báo đúng giờ; lần mở tiếp theo sẽ hiện việc đã đến hạn.</p>
+              {isPrivate && <p className="inspector-hint">Thông báo riêng tư chỉ hiện lời nhắc chung, không hiển thị tiêu đề hay nội dung.</p>}
+            </section>
             <section className="inspector-section">
               <h3>Ảnh và tệp</h3>
               <button className="inspector-add-row" type="button" disabled={mediaBusy} onMouseDown={rememberSelection} onClick={() => imageInputRef.current?.click()}><Icon name="image" className="inspector-add-icon" /><span>Chèn ảnh tại vị trí con trỏ</span><Icon name="plus" size={16} /></button>
@@ -656,7 +679,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
           {selectedTab === 'Ảnh' && selectedImage && <div className="document-inspector-content">
             <NoteImageTools key={imageSelectionVersion} image={selectedImage} editorWidth={imageEditorWidth} disabled={mediaBusy || saving} onChange={updateSelectedImage} onReplace={() => replacementInputRef.current?.click()} onRemove={removeSelectedImage} />
           </div>}
-          {selectedTab === 'Thông tin' && <div className="document-inspector-content"><section className="inspector-section"><h3>Chi tiết</h3><dl className="document-info-list"><dt>Được tạo</dt><dd>{formatDate(documentNote.createdAt)}</dd><dt>Cập nhật lần cuối</dt><dd>{formatDate(documentNote.updatedAt || documentNote.createdAt)}</dd><dt>Bộ sưu tập</dt><dd>{isPrivate ? 'Riêng tư' : topic?.name || 'Chưa phân loại'}</dd><dt>Ngày ghi chú</dt><dd>{noteDate ? formatDate(`${noteDate}T12:00:00`) : '—'}</dd></dl></section></div>}
+          {selectedTab === 'Thông tin' && <div className="document-inspector-content"><section className="inspector-section"><h3>Chi tiết</h3><dl className="document-info-list"><dt>Được tạo</dt><dd>{formatDate(documentNote.createdAt)}</dd><dt>Cập nhật lần cuối</dt><dd>{formatDate(documentNote.updatedAt || documentNote.createdAt)}</dd><dt>Bộ sưu tập</dt><dd>{isPrivate ? 'Riêng tư' : topic?.name || 'Chưa phân loại'}</dd><dt>Ngày ghi chú</dt><dd>{noteDate ? formatDate(`${noteDate}T12:00:00`) : '—'}</dd><dt>Lịch nhắc</dt><dd>{reminderInput ? formatReminder(reminderInstant(reminderInput, documentNote.reminderAt)) : 'Chưa đặt'}</dd></dl></section></div>}
         </aside>
       </div>
     </section>

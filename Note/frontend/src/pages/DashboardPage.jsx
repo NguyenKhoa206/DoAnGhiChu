@@ -6,6 +6,14 @@ import Toast from '../components/UI/Toast';
 import './DashboardPage.css';
 import Icon from '../components/UI/Icon';
 import { AppContext } from '../context/AppContextBase';
+import ConfirmDialog from '../components/UI/ConfirmDialog';
+import { formatReminder } from '../utils/noteReminders';
+
+const QuickActions = ({ note, flags, onToggle, onDelete }) => <div className="directory-card-actions" onClick={(event) => event.stopPropagation()}>
+  <button type="button" className={note.isPinned || flags.pinned.includes(note.id) ? 'active' : ''} aria-label={note.isPinned ? 'Bỏ ghim' : 'Ghim'} title={note.isPinned ? 'Bỏ ghim' : 'Ghim'} onClick={() => onToggle(note, 'isPinned')}><Icon name="pin" size={17} /></button>
+  <button type="button" className={note.isFavorite || flags.favorites.includes(note.id) ? 'active' : ''} aria-label={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} title={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} onClick={() => onToggle(note, 'isFavorite')}><Icon name="star" size={17} /></button>
+  <button type="button" className="directory-delete-button" aria-label={`Xóa ghi chú ${note.title}`} title="Xóa ghi chú" onClick={() => onDelete(note.id)}><Icon name="trash" size={17} /></button>
+</div>;
 
 const dateKey = (value) => {
   const date = new Date(value || 0);
@@ -31,6 +39,8 @@ const DashboardPage = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [detailNote, setDetailNote] = useState(null);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const directoryLayout = preferences?.noteLayout || localStorage.getItem('nep-note-directory-layout') || 'table';
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
   const storageKey = 'nep-note-flags-' + (user?.id || user?.userId || user?.username || 'guest');
@@ -48,8 +58,9 @@ const DashboardPage = () => {
   const [noteDrafts, setNoteDrafts] = useState({});
   const searchInputRef = useRef(null);
 
-  const currentView = topicSlug ? 'topic' : (searchParams.get('view') || 'all');
-  const isDirectoryView = ['all', 'today', 'favorites', 'pinned', 'journal', 'topic'].includes(currentView);
+  const requestedView = searchParams.get('view');
+  const currentView = topicSlug ? 'topic' : (['today', 'favorites', 'pinned'].includes(requestedView) ? requestedView : 'all');
+  const isDirectoryView = ['all', 'today', 'favorites', 'pinned', 'topic'].includes(currentView);
   const isNewNoteRequested = searchParams.get('new') === '1';
 
   const changeDirectoryLayout = async (noteLayout) => {
@@ -108,6 +119,30 @@ const DashboardPage = () => {
     return () => window.removeEventListener('nep:notes-changed', refreshNotes);
   }, [fetchDashboardData]);
 
+  useEffect(() => {
+    const noteId = searchParams.get('open');
+    if (!noteId || loading) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        let requested = notes.find((note) => note.id === noteId);
+        // A reminder may refer to a note created in another tab.
+        if (!requested) {
+          const fresh = await noteService.getAllNotes();
+          if (!active) return;
+          requested = fresh.find((note) => note.id === noteId);
+          setNotes(fresh);
+        }
+        if (requested) setDetailNote(requested);
+        else showToast('Ghi chú không còn tồn tại.', 'info');
+        const next = new URLSearchParams(searchParams);
+        next.delete('open');
+        setSearchParams(next, { replace: true });
+      } catch (error) { if (active) showToast(error.response?.data?.message || 'Không mở được ghi chú. Hãy thử lại.', 'error'); }
+    }, 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [loading, notes, searchParams, setSearchParams, showToast]);
+
   const displayedNotes = useMemo(() => {
     const today = dateKey(new Date());
     const needle = searchTerm.trim().toLocaleLowerCase('vi');
@@ -115,14 +150,9 @@ const DashboardPage = () => {
       .filter((note) => {
         const searchable = ((note.title || '') + ' ' + (note.content || '')).toLocaleLowerCase('vi');
         if (needle && !searchable.includes(needle)) return false;
-        if (currentView === 'today') return (note.noteDate || dateKey(note.createdAt)) === today;
+        if (currentView === 'today') return (note.noteDate || dateKey(note.createdAt)) === today || dateKey(note.reminderAt) === today;
         if (currentView === 'favorites') return note.isFavorite === true || flags.favorites.includes(note.id);
         if (currentView === 'pinned') return note.isPinned === true || flags.pinned.includes(note.id);
-        if (currentView === 'journal') {
-          const topic = topics.find((item) => item.slug === note.topicSlug || item.id === note.topicSlug);
-          const journalTag = `${topic?.name || ''} ${note.topicSlug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi');
-          return note.topicSlug === 'nhat-ky' || journalTag.includes('nhat ky') || journalTag.includes('journal');
-        }
         return true;
       })
       .sort((a, b) => {
@@ -130,7 +160,7 @@ const DashboardPage = () => {
         if (sortOrder === 'title') return (a.title || '').localeCompare(b.title || '', 'vi', { sensitivity: 'base' });
         return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
       });
-  }, [currentView, flags.favorites, flags.pinned, notes, searchTerm, sortOrder, topics]);
+  }, [currentView, flags.favorites, flags.pinned, notes, searchTerm, sortOrder]);
 
   const activeNote = displayedNotes.find((note) => note.id === selectedNoteId) || displayedNotes[0] || null;
 
@@ -161,6 +191,8 @@ const DashboardPage = () => {
         attachments: current[noteId]?.attachments ?? sourceNote.attachments ?? [],
         backgroundColor: current[noteId]?.backgroundColor ?? sourceNote.backgroundColor ?? '#fffdf8',
         backgroundImage: current[noteId]?.backgroundImage ?? sourceNote.backgroundImage ?? '',
+        noteDate: current[noteId]?.noteDate ?? sourceNote.noteDate,
+        reminderAt: current[noteId]?.reminderAt !== undefined ? current[noteId].reminderAt : sourceNote.reminderAt || null,
         ...changes,
       },
     }));
@@ -181,7 +213,6 @@ const DashboardPage = () => {
     today: 'Hôm nay',
     favorites: 'Yêu thích',
     pinned: 'Đã ghim',
-    journal: 'Nhật ký',
     topic: topics.find((topic) => topic.slug === topicSlug || topic.id === topicSlug)?.name || 'Chủ đề',
   };
   const viewTitle = viewTitles[currentView] || 'Tất cả tài liệu';
@@ -190,7 +221,7 @@ const DashboardPage = () => {
     try {
       let savedNote;
       const createFromView = !noteData.id;
-      const topicForNewNote = topicSlug || noteData.topicSlug || (currentView === 'journal' ? 'nhat-ky' : 'ghi-chu');
+      const topicForNewNote = topicSlug || noteData.topicSlug || '';
       const savePayload = {
         ...noteData,
         ...(!noteData.id && {
@@ -285,34 +316,17 @@ const DashboardPage = () => {
     setSelectedNoteId(note.id);
   };
 
-  const deleteNote = async () => {
-    if (!activeNote || !window.confirm('Xóa ghi chú này?')) return;
-    try {
-      await noteService.deleteNote(activeNote.id, activeNote.topicSlug);
-      setFlags((current) => {
-        const next = {
-          favorites: current.favorites.filter((id) => id !== activeNote.id),
-          pinned: current.pinned.filter((id) => id !== activeNote.id),
-        };
-        localStorage.setItem(storageKey, JSON.stringify(next));
-        return next;
-      });
-      setSelectedNoteId(null);
-      setNoteDrafts((current) => {
-        const next = { ...current };
-        delete next[activeNote.id];
-        return next;
-      });
-      showToast('Đã xóa ghi chú.', 'success');
-      await fetchDashboardData();
-    } catch (error) {
-      showToast(error.response?.data?.message || 'Không thể xóa ghi chú.', 'error');
-    }
+  const requestDeleteNote = (noteId) => {
+    const note = notes.find((item) => item.id === noteId) || detailNote || editingNote;
+    if (note?.id) setNoteToDelete(note);
   };
 
-  const deleteDirectoryNote = async (noteId) => {
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete || deleting) return;
+    const { id: noteId, topicSlug: deletedTopic } = noteToDelete;
+    setDeleting(true);
     try {
-      await noteService.deleteNote(noteId, notes.find((note) => note.id === noteId)?.topicSlug);
+      await noteService.deleteNote(noteId, deletedTopic);
       setNotes((current) => current.filter((note) => note.id !== noteId));
       setFlags((current) => {
         const next = {
@@ -322,18 +336,22 @@ const DashboardPage = () => {
         localStorage.setItem(storageKey, JSON.stringify(next));
         return next;
       });
-      setDetailNote(null);
-      showToast('Đã xóa ghi chú.', 'success');
+      setDetailNote((current) => current?.id === noteId ? null : current);
+      setNoteDrafts((current) => { const next = { ...current }; delete next[noteId]; return next; });
+      if (editingNote?.id === noteId || isEditorOpen || isNewNoteRequested) closeEditor();
+      if (selectedNoteId === noteId) setSelectedNoteId(null);
+      setNoteToDelete(null);
+      showToast('Đã chuyển ghi chú vào thùng rác.', 'success');
     } catch (error) {
       showToast(error.response?.data?.message || 'Không thể xóa ghi chú.', 'error');
-    }
+    } finally { setDeleting(false); }
   };
 
   const saveDirectoryNote = async (noteId, changes) => {
     try {
       const response = await noteService.updateNote(noteId, changes);
       const savedNote = response.data || response;
-      const updatedNote = { ...detailNote, ...savedNote, ...changes };
+      const updatedNote = { ...detailNote, ...changes, ...savedNote };
       setNotes((current) => current.map((note) => note.id === noteId ? updatedNote : note));
       setDetailNote(updatedNote);
       setNoteDrafts((current) => { const next = { ...current }; delete next[noteId]; return next; });
@@ -374,6 +392,7 @@ const DashboardPage = () => {
       {toast.show && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ ...toast, show: false })} />
       )}
+      {noteToDelete && <ConfirmDialog title="Xóa ghi chú?" message={`“${noteToDelete.title}” sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại sau.`} busy={deleting} onCancel={() => setNoteToDelete(null)} onConfirm={confirmDeleteNote} />}
 
       {isDirectoryView && detailNote ? (
         <DocumentDetailView
@@ -384,9 +403,7 @@ const DashboardPage = () => {
           onDraftChange={updateNoteDraft}
           onBack={() => setDetailNote(null)}
           onSave={saveDirectoryNote}
-          onDelete={(noteId) => {
-            if (window.confirm('Xóa tài liệu này?')) deleteDirectoryNote(noteId);
-          }}
+          onDelete={requestDeleteNote}
           onToggleFavorite={(note) => toggleNoteFlag(note, 'isFavorite')}
           onTogglePinned={(note) => toggleNoteFlag(note, 'isPinned')}
         />
@@ -399,8 +416,8 @@ const DashboardPage = () => {
           backLabel={viewTitle}
           onDraftChange={updateNoteDraft}
           onBack={closeEditor}
-          onSave={(noteId, changes) => handleCreateOrUpdate({ ...changes, id: noteId || undefined, ...(!noteId && { noteDate: new Date().toLocaleDateString('sv-SE') }) })}
-          onDelete={(noteId) => { if (window.confirm('Xóa ghi chú này?')) { deleteDirectoryNote(noteId); closeEditor(); } }}
+          onSave={(noteId, changes) => handleCreateOrUpdate({ ...changes, id: noteId || undefined })}
+          onDelete={requestDeleteNote}
         />
       ) : <div className={'nep-workspace' + (isDirectoryView ? ' all-notes-workspace' : '')}>
         <aside className={'note-browser' + (isDirectoryView ? ' all-notes-browser' : '')}>
@@ -419,7 +436,7 @@ const DashboardPage = () => {
             )}
           </div>
 
-          <p className="browser-description">{({ today: 'Những ghi chú của bạn trong hôm nay.', favorites: 'Các ghi chú bạn muốn tìm lại nhanh.', pinned: 'Các ghi chú quan trọng.', journal: 'Lưu lại câu chuyện và suy nghĩ mỗi ngày.', topic: 'Tài liệu trong bộ sưu tập của bạn.' }[currentView] || 'Một nơi để lưu ý tưởng, kế hoạch và những điều cần nhớ.')}</p>
+          <p className="browser-description">{({ today: 'Những ghi chú và việc có lịch nhắc trong hôm nay.', favorites: 'Các ghi chú bạn muốn tìm lại nhanh.', pinned: 'Các ghi chú quan trọng.', topic: 'Tài liệu trong bộ sưu tập của bạn.' }[currentView] || 'Một nơi để lưu ý tưởng, kế hoạch và những điều cần nhớ.')}</p>
           <div className="browser-tools">
             <label className="note-search">
               <Icon name="search" size={18} />
@@ -450,18 +467,17 @@ const DashboardPage = () => {
                   <table className="directory-table">
                     <thead><tr><th>Tên</th><th>Bộ sưu tập</th><th>Đã cập nhật</th><th>Thao tác</th></tr></thead>
                     <tbody>{displayedNotes.map((note) => (
-                      <tr key={note.id}>
+                      <tr key={note.id} className="directory-clickable-row" tabIndex={0} aria-label={`Mở ghi chú ${note.title}`} onClick={() => setDetailNote(note)} onKeyDown={(event) => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); setDetailNote(note); } }}>
                         <td>
-                          <button type="button" className="directory-note-link" onClick={() => setDetailNote(note)}>
+                          <button type="button" className="directory-note-link" onClick={(event) => { event.stopPropagation(); setDetailNote(note); }}>
                             <strong className="directory-note-title">{note.title || 'Ghi chú chưa có tiêu đề'}</strong>
                             <span className="directory-note-preview">{(note.content || 'Tài liệu trống').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 130)}</span>
                           </button>
                         </td>
                         <td>{topics.find((topic) => topic.slug === note.topicSlug || topic.id === note.topicSlug)?.name || '—'}</td>
-                        <td>{formatDate(note.updatedAt || note.createdAt)}</td>
+                        <td>{formatDate(note.updatedAt || note.createdAt)}{note.reminderAt && <span className="directory-reminder"><Icon name="bell" size={13} />{formatReminder(note.reminderAt)}</span>}</td>
                         <td className="directory-note-actions-cell">
-                          <button type="button" className={note.isPinned || flags.pinned.includes(note.id) ? 'active' : ''} aria-label={note.isPinned ? 'Bỏ ghim' : 'Ghim'} title={note.isPinned ? 'Bỏ ghim' : 'Ghim'} onClick={() => toggleNoteFlag(note, 'isPinned')}><Icon name="pin" size={17} /></button>
-                          <button type="button" className={note.isFavorite || flags.favorites.includes(note.id) ? 'active' : ''} aria-label={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} title={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} onClick={() => toggleNoteFlag(note, 'isFavorite')}><Icon name="star" size={17} /></button>
+                          <QuickActions note={note} flags={flags} onToggle={toggleNoteFlag} onDelete={requestDeleteNote} />
                         </td>
                       </tr>
                     ))}</tbody>
@@ -470,11 +486,12 @@ const DashboardPage = () => {
               ) : (
                 <div className="directory-card-grid">
                   {displayedNotes.map((note) => (
-                    <article className="directory-card" key={note.id}>
-                      <div className="directory-card-head"><button type="button" className="directory-card-title-button" onClick={() => setDetailNote(note)}><strong className="directory-note-title">{note.title || 'Ghi chú chưa có tiêu đề'}</strong></button><div className="directory-card-actions"><button type="button" className={note.isPinned || flags.pinned.includes(note.id) ? 'active' : ''} aria-label={note.isPinned ? 'Bỏ ghim' : 'Ghim'} title={note.isPinned ? 'Bỏ ghim' : 'Ghim'} onClick={() => toggleNoteFlag(note, 'isPinned')}><Icon name="pin" size={17} /></button><button type="button" className={note.isFavorite || flags.favorites.includes(note.id) ? 'active' : ''} aria-label={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} title={note.isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'} onClick={() => toggleNoteFlag(note, 'isFavorite')}><Icon name="star" size={17} /></button></div></div>
+                    <article className="directory-card" key={note.id} tabIndex={0} aria-label={`Mở ghi chú ${note.title}`} onClick={() => setDetailNote(note)} onKeyDown={(event) => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); setDetailNote(note); } }}>
+                      <div className="directory-card-head"><button type="button" className="directory-card-title-button" onClick={(event) => { event.stopPropagation(); setDetailNote(note); }}><strong className="directory-note-title">{note.title || 'Ghi chú chưa có tiêu đề'}</strong></button><QuickActions note={note} flags={flags} onToggle={toggleNoteFlag} onDelete={requestDeleteNote} /></div>
                       <span className="directory-card-meta">Đã cập nhật {formatDate(note.updatedAt || note.createdAt)}</span>
                       <span className="directory-note-preview">{(note.content || 'Tài liệu trống').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)}</span>
-                      <span className="directory-card-topic">{topics.find((topic) => topic.slug === note.topicSlug || topic.id === note.topicSlug)?.name || 'Ghi chú'}</span>
+                      {note.reminderAt && <span className="directory-reminder"><Icon name="bell" size={13} />{formatReminder(note.reminderAt)}</span>}
+                      <span className="directory-card-topic">{topics.find((topic) => topic.slug === note.topicSlug || topic.id === note.topicSlug)?.name || 'Chưa phân loại'}</span>
                     </article>
                   ))}
                 </div>
@@ -535,7 +552,7 @@ const DashboardPage = () => {
             topics={topics}
             onDraftChange={(noteId, changes) => { if (noteId) updateActiveDraft(changes); }}
             onSave={saveDashboardDocument}
-            onDelete={activeNote ? deleteNote : undefined}
+            onDelete={activeNote ? requestDeleteNote : undefined}
             onToggleFavorite={(note) => toggleNoteFlag(note, 'isFavorite')}
             onTogglePinned={(note) => toggleNoteFlag(note, 'isPinned')}
           />

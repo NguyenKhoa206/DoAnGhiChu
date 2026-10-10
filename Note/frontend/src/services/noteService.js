@@ -1,7 +1,8 @@
 import api from './api.js';
 
-const topicPath = (topic) => topic && !['topics', 'private', 'trash'].includes(topic)
+const topicPath = (topic) => topic && !['topics', 'private', 'trash', 'reminders'].includes(topic)
   ? `/notes/${encodeURIComponent(topic)}` : '/notes';
+const announceReminderChange = () => window.dispatchEvent(new Event('nep:reminders-changed'));
 const savedNoteOf = (response) => response.data?.note || response.data;
 const privateRequest = (privateToken) => {
   if (!privateToken) {
@@ -52,6 +53,7 @@ const noteService = {
    */
   deleteTopic: async (topicId) => {
     const response = await api.delete(`/notes/topics/${topicId}`);
+    announceReminderChange();
     return response.data;
   },
 
@@ -75,7 +77,8 @@ const noteService = {
    * POST /api/notes/:topic
    */
   createNote: async (noteData) => {
-    const response = await api.post(topicPath(noteData.topicSlug || 'ghi-chu'), noteData);
+    const response = await api.post(topicPath(noteData.topicSlug), noteData);
+    announceReminderChange();
     return savedNoteOf(response);
   },
 
@@ -85,6 +88,7 @@ const noteService = {
    */
   updateNote: async (noteId, noteData) => {
     const response = await api.put(`${topicPath(noteData.topicSlug)}/${encodeURIComponent(noteId)}`, noteData);
+    announceReminderChange();
     return savedNoteOf(response);
   },
 
@@ -94,11 +98,12 @@ const noteService = {
    */
   deleteNote: async (noteId, topicSlug) => {
     const response = await api.delete(`${topicPath(topicSlug)}/${encodeURIComponent(noteId)}`);
+    announceReminderChange();
     return response.data;
   },
 
   getTrash: async () => (await api.get('/notes/trash')).data,
-  restoreTrashNote: async (noteId) => (await api.post(`/notes/trash/${noteId}/restore`)).data,
+  restoreTrashNote: async (noteId) => { const response = await api.post(`/notes/trash/${noteId}/restore`); announceReminderChange(); return response.data; },
   permanentlyDeleteTrashNote: async (noteId) => (await api.delete(`/notes/trash/${noteId}`)).data,
 
   // ==========================================
@@ -115,7 +120,7 @@ const noteService = {
   },
 
   getPrivateTrash: async (privateToken) => (await api.get('/private/trash', privateRequest(privateToken))).data,
-  restorePrivateTrashNote: async (noteId, privateToken) => (await api.post(`/private/trash/${encodeURIComponent(noteId)}/restore`, {}, privateRequest(privateToken))).data,
+  restorePrivateTrashNote: async (noteId, privateToken) => { const response = await api.post(`/private/trash/${encodeURIComponent(noteId)}/restore`, {}, privateRequest(privateToken)); announceReminderChange(); return response.data; },
   permanentlyDeletePrivateTrashNote: async (noteId, privateToken) => (await api.delete(`/private/trash/${encodeURIComponent(noteId)}`, privateRequest(privateToken))).data,
 
   /**
@@ -124,6 +129,7 @@ const noteService = {
    */
   createPrivateNote: async (encryptedNoteData, privateToken) => {
     const response = await api.post('/private/notes', encryptedNoteData, privateRequest(privateToken));
+    announceReminderChange();
     return savedNoteOf(response);
   },
 
@@ -133,6 +139,7 @@ const noteService = {
    */
   updatePrivateNote: async (noteId, encryptedNoteData, privateToken) => {
     const response = await api.put(`/private/notes/${encodeURIComponent(noteId)}`, encryptedNoteData, privateRequest(privateToken));
+    announceReminderChange();
     return savedNoteOf(response);
   },
 
@@ -142,8 +149,11 @@ const noteService = {
    */
   deletePrivateNote: async (noteId, privateToken) => {
     const response = await api.delete(`/private/notes/${encodeURIComponent(noteId)}`, privateRequest(privateToken));
+    announceReminderChange();
     return response.data;
   },
+  getReminders: async () => (await api.get('/notes/reminders')).data,
+  deliverReminder: async (noteId, reminderAt) => (await api.post(`/notes/reminders/${encodeURIComponent(noteId)}/deliver`, { reminderAt })).data,
 };
 
 export default noteService;

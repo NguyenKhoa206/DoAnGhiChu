@@ -310,3 +310,8 @@
 .note-search:focus-within { border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--primary-light); }
 .note-search input:focus { box-shadow: none; }
 .directory-table td:nth-child(2) { overflow: hidden; text-overflow: ellipsis; }
+.directory-clickable-row, .directory-card[tabindex] { cursor: pointer; }
+.directory-clickable-row:focus-visible, .directory-card[tabindex]:focus-visible { outline: 2px solid var(--primary-color, #2463eb); outline-offset: -2px; }
+.directory-note-actions-cell .directory-card-actions { justify-content: flex-end; }
+.directory-card-actions .directory-delete-button:hover, .directory-note-actions-cell .directory-delete-button:hover { color: #c3483c; background: #c3483c12; }
+.directory-reminder { display: flex; align-items: center; gap: 5px; margin-top: 6px; color: var(--accent-text, #2463eb); font-size: .68rem; line-height: 1.5; }

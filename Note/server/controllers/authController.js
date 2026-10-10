@@ -206,4 +206,7 @@ const authController = {
 
 };
 
+const { withNotebookMutation } = require('../utils/notebookMutation');
+const changePrivatePassword = authController.changePrivatePassword;
+authController.changePrivatePassword = (req, res) => withNotebookMutation(() => changePrivatePassword(req, res));
 module.exports = authController;

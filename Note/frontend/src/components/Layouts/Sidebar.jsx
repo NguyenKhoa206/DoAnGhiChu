@@ -111,7 +111,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {viewLink('today', 'today', 'Hôm nay')}
                 {viewLink('favorites', 'star', 'Yêu thích')}
                 {viewLink('pinned', 'pin', 'Đã ghim')}
-                {viewLink('journal', 'journal', 'Nhật ký')}
               </div>
 
               <div className="nav-section">

@@ -1,0 +1,10 @@
+.confirm-dialog-overlay { position: fixed; inset: 0; z-index: 1600; display: grid; place-items: center; padding: 20px; background: #10182770; backdrop-filter: blur(4px); }
+.confirm-dialog { width: min(100%, 420px); padding: 28px; border: 1px solid var(--border-color, #e5e8ec); border-radius: 20px; color: var(--text-main, #17243b); background: var(--bg-card, #fff); box-shadow: 0 24px 80px #0003; }
+.confirm-dialog-icon { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 17px; border-radius: 14px; color: #c3483c; background: #c3483c12; }
+.confirm-dialog h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.confirm-dialog p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; color: var(--text-muted, #65738a); }
+.confirm-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 25px; }
+.confirm-dialog-actions button { min-height: 40px; padding: 9px 15px; border: 1px solid var(--border-color, #e5e8ec); border-radius: 9px; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.confirm-dialog-actions .confirm-dialog-delete { color: #fff; background: #bd4339; border-color: #bd4339; }
+.confirm-dialog-actions button:disabled { opacity: .6; cursor: wait; }
+.confirm-dialog-actions button:focus-visible { outline: 3px solid var(--primary-color, #2463eb); outline-offset: 3px; }

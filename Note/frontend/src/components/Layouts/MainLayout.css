@@ -47,3 +47,4 @@
 .header-title { color: var(--text-main); font-size: .85rem; }
 .sidebar-toggle-btn { place-items: center; }
 @media (max-width: 768px) { .sidebar-toggle-btn { display: grid; } .header-title { font-size: .78rem; } }
+.header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }

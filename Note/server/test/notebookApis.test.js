@@ -36,6 +36,143 @@ const setup = async () => {
   return result.body.privateToken;
 };
 
+test('creating an unclassified note never creates a collection and trash restore keeps it unclassified', async () => {
+  const saved = await request('/notes', 'POST', { title: 'Ghi chú độc lập', content: '<p>Không tạo thư mục</p>' });
+  assert.equal(saved.status, 201);
+  assert.equal(saved.body.topicSlug, '');
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['_unfiled.json']);
+  const id = saved.body.id;
+  assert.equal((await request(`/notes/${id}`, 'PUT', { title: 'Đã sửa' })).status, 200);
+  assert.equal((await request(`/notes/${id}`, 'DELETE')).status, 200);
+  assert.equal((await request(`/notes/trash/${id}/restore`, 'POST')).body.topicSlug, '');
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  assert.equal((await request('/notes')).body[0].title, 'Đã sửa');
+});
+
+test('former automatic Ghi chu and Nhat ky collections migrate without losing notes or custom collections', async () => {
+  const former = [{ id: 'default-note', title: 'Ghi chú cũ', isPinned: true }];
+  const journal = [{ id: 'journal-note', title: 'Nhật ký cũ', content: '<p>Giữ nội dung</p>' }];
+  await fs.outputJson(path.join(temporary, 'notes', 'ghi-chu.json'), former);
+  await fs.outputJson(path.join(temporary, 'notes', 'nhat-ky.json'), journal);
+  await fs.outputJson(path.join(temporary, 'notes', 'hoc-tap.json'), []);
+  assert.deepEqual((await request('/notes/topics')).body.map((topic) => topic.slug), ['hoc-tap']);
+  for (let i = 0; i < 2; i++) {
+    const notes = (await request('/notes')).body;
+    assert.equal(notes.length, 2);
+    assert.equal(notes.find((note) => note.id === 'journal-note').content, '<p>Giữ nội dung</p>');
+    assert.equal(notes.find((note) => note.id === 'default-note').isPinned, true);
+    assert(notes.every((note) => note.topicSlug === ''));
+  }
+  assert.deepEqual((await fs.readdir(path.join(temporary, 'notes'))).sort(), ['_unfiled.json', 'hoc-tap.json']);
+  // Legacy note endpoints remain compatible without reintroducing a folder.
+  assert.equal((await request('/notes/ghi-chu', 'POST', { title: 'Client cũ' })).status, 201);
+  assert.deepEqual((await request('/notes/topics')).body.map((topic) => topic.slug), ['hoc-tap']);
+});
+
+test('invalid dates, missing timezone, invalid types and past schedules cannot change saved notes', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const saved = (await request('/notes', 'POST', { title: 'Lịch đúng', reminderAt: future })).body;
+  for (const reminderAt of ['bad', '2026-02-30T12:00:00Z', '2026-10-10T25:00:00Z', '2030-10-10T10:00', {}, new Date(Date.now() - 1000).toISOString()]) {
+    assert.equal((await request('/notes', 'POST', { title: 'Lịch sai', reminderAt })).status, 400);
+    assert.equal((await request(`/notes/${saved.id}`, 'PUT', { reminderAt })).status, 400);
+  }
+  const notes = (await request('/notes')).body;
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].reminderAt, future);
+});
+
+test('schedules normalize timezone, survive partial edits and can be removed', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const offsetTime = future.replace('Z', '+00:00');
+  const saved = (await request('/notes', 'POST', { title: 'Nộp bài', reminderAt: offsetTime })).body;
+  assert.equal(saved.reminderAt, future);
+  const updated = (await request(`/notes/${saved.id}`, 'PUT', { isPinned: true })).body;
+  assert.equal(updated.reminderAt, future);
+  assert.equal((await request('/notes/reminders')).body[0].id, saved.id);
+  assert.equal((await request(`/notes/reminders/${saved.id}/deliver`, 'POST', { reminderAt: future })).body.delivered, false);
+  assert.equal((await request(`/notes/${saved.id}`, 'PUT', { reminderAt: null })).body.reminderAt, null);
+  assert.deepEqual((await request('/notes/reminders')).body, []);
+});
+
+test('due reminders are delivered once across concurrent tabs; repeat reads and text edits cannot rearm them', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const saved = (await request('/notes', 'POST', { title: 'Việc đến hạn', reminderAt: future })).body;
+  const target = path.join(temporary, 'notes', '_unfiled.json');
+  const due = new Date(Date.now() - 60_000).toISOString();
+  await fs.writeJson(target, [{ ...saved, reminderAt: due }]);
+  const results = await Promise.all([request(`/notes/reminders/${saved.id}/deliver`, 'POST', { reminderAt: due }), request(`/notes/reminders/${saved.id}/deliver`, 'POST', { reminderAt: due })]);
+  assert.deepEqual(results.map((result) => result.body.delivered).sort(), [false, true]);
+  assert((await request('/notes/reminders')).body[0].reminderNotifiedAt);
+  const edited = (await request(`/notes/${saved.id}`, 'PUT', { title: 'Sửa sau khi nhắc', reminderAt: due, reminderNotifiedAt: null })).body;
+  assert(edited.reminderNotifiedAt);
+  assert.equal((await request(`/notes/reminders/${saved.id}/deliver`, 'POST', { reminderAt: due })).body.delivered, false);
+  const rescheduled = (await request(`/notes/${saved.id}`, 'PUT', { reminderAt: future })).body;
+  assert.equal(rescheduled.reminderNotifiedAt, null);
+  assert.equal((await request(`/notes/reminders/${saved.id}/deliver`, 'POST', { reminderAt: due })).body.delivered, false);
+});
+
+test('deleting a scheduled note cancels its reminder and restoring preserves the saved schedule', async () => {
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const note = (await request('/notes', 'POST', { title: 'Có lịch', reminderAt: future })).body;
+  await request(`/notes/${note.id}`, 'DELETE');
+  assert.deepEqual((await request('/notes/reminders')).body, []);
+  assert.equal((await request(`/notes/reminders/${note.id}/deliver`, 'POST', { reminderAt: future })).status, 404);
+  const restored = (await request(`/notes/trash/${note.id}/restore`, 'POST')).body;
+  assert.equal(restored.reminderAt, future);
+  assert.equal((await request('/notes/reminders')).body.length, 1);
+});
+
+test('private reminder summaries and delivery never expose note titles, content or metadata', async () => {
+  const token = await setup();
+  const future = new Date(Date.now() + 3_600_000).toISOString();
+  const result = await request('/private/notes', 'POST', { title: 'encrypted-title', content: 'encrypted-content', metadata: 'encrypted-metadata', reminderAt: future }, token);
+  assert.equal(result.status, 201);
+  const note = result.body.note;
+  const summary = (await request('/notes/reminders')).body[0];
+  assert.equal(summary.isPrivate, true);
+  assert.equal(summary.title, 'Một ghi chú riêng tư cần xem lại');
+  assert.equal(JSON.stringify(summary).includes('encrypted'), false);
+  const due = new Date(Date.now() - 1000).toISOString();
+  await fs.writeJson(path.join(temporary, 'private.json'), [{ ...note, reminderAt: due }]);
+  const delivered = await request(`/notes/reminders/${note.id}/deliver`, 'POST', { reminderAt: due });
+  assert.equal(delivered.body.delivered, true);
+  assert.equal(JSON.stringify(delivered.body).includes('encrypted'), false);
+  assert.equal((await request(`/private/notes/${note.id}`, 'PUT', { reminderAt: 'invalid' }, token)).status, 400);
+  assert.equal((await request('/private/notes', 'POST', { title: 'e', content: 'e', reminderAt: due }, token)).status, 400);
+});
+
+test('concurrent note writes do not drop either note', async () => {
+  const results = await Promise.all([request('/notes', 'POST', { title: 'Thứ nhất' }), request('/notes', 'POST', { title: 'Thứ hai' })]);
+  assert(results.every((result) => result.status === 201));
+  assert.deepEqual((await request('/notes')).body.map((note) => note.title).sort(), ['Thứ hai', 'Thứ nhất']);
+});
+
+test('private password rotation and reminder delivery preserve both new ciphertext and delivered status', async () => {
+  const token = await setup();
+  const note = (await request('/private/notes', 'POST', { title: 'old-cipher', content: 'old-content', reminderAt: new Date(Date.now() + 3_600_000).toISOString() }, token)).body.note;
+  const due = new Date(Date.now() - 1000).toISOString();
+  await fs.writeJson(path.join(temporary, 'private.json'), [{ ...note, reminderAt: due }]);
+  const [changed, delivered] = await Promise.all([
+    request('/auth/change-private-password', 'PUT', { currentPassword: 'old-secret', newPassword: 'new-secret', encryptedNotes: [{ id: note.id, title: 'new-cipher', content: 'new-content' }] }),
+    request(`/notes/reminders/${note.id}/deliver`, 'POST', { reminderAt: due }),
+  ]);
+  assert.equal(changed.status, 200);
+  assert.equal(delivered.body.delivered, true);
+  assert.equal((await request('/private/notes', 'GET', undefined, token)).status, 403);
+  const access = (await request('/auth/verify-private-password', 'POST', { privatePassword: 'new-secret' })).body.privateToken;
+  const saved = (await request('/private/notes', 'GET', undefined, access)).body[0];
+  assert.equal(saved.title, 'new-cipher');
+  assert.equal(saved.content, 'new-content');
+  assert(saved.reminderNotifiedAt);
+  assert.equal(saved.reminderAt, due);
+});
+
+test('reminder delivery rejects requests without a schedule instead of returning a server error', async () => {
+  assert.equal((await request('/notes/reminders/missing/deliver', 'POST')).status, 400);
+  assert.equal((await request('/notes/reminders/missing/deliver', 'POST', {})).status, 400);
+});
+
 test('new notebook opens without login and creates missing profile and notes', async () => {
   const profile = await request('/users/profile');
   assert.equal(profile.status, 200);

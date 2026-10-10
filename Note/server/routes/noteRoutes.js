@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const noteController = require('../controllers/noteController');
+const reminderController = require('../controllers/reminderController');
 const notebookMiddleware = require('../middleware/notebookMiddleware');
 const privateAuthMiddleware = require('../middleware/privateAuthMiddleware');
 
@@ -8,6 +9,10 @@ const privateAuthMiddleware = require('../middleware/privateAuthMiddleware');
 router.use(notebookMiddleware);
 // The legacy private URLs require the same grant as /api/private/notes.
 router.use('/private', privateAuthMiddleware);
+
+// Private reminders expose only a generic label, never encrypted note data.
+router.get('/reminders', reminderController.getReminders);
+router.post('/reminders/:noteId/deliver', reminderController.deliverReminder);
 
 // Thùng rác thường và riêng tư có API / tệp lưu trữ riêng.
 router.get('/trash', noteController.getTrash);

@@ -18,7 +18,10 @@ import TrashPage from './pages/TrashPage';
 
 const DashboardRoute = () => {
   const location = useLocation();
-  return <DashboardPage key={`${location.pathname}${location.search}`} />;
+  const params = new URLSearchParams(location.search);
+  // Consuming a reminder link must not remount and close the opened document.
+  params.delete('open');
+  return <DashboardPage key={`${location.pathname}?${params.toString()}`} />;
 };
 
 function NotebookRoutes() {

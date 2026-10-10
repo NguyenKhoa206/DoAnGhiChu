@@ -4,6 +4,7 @@ import { formatDate } from '../../utils/formatters';
 import './NoteList.css';
 import Icon from '../UI/Icon';
 import { AppContext } from '../../context/AppContextBase';
+import { formatReminder } from '../../utils/noteReminders';
 
 const NoteList = ({
   notes = [],
@@ -74,7 +75,11 @@ const NoteList = ({
       {/* Danh sách hiển thị NoteCard */}
       {filteredNotes.length > 0 ? (
         layout === 'table' ? <div className="private-note-table-wrap"><table className="private-note-table"><thead><tr><th>Tên</th><th>Ngày cập nhật</th><th>Thao tác</th></tr></thead><tbody>
-          {filteredNotes.map((note) => <tr key={note.id}><td><button className="private-note-table-open" type="button" onClick={() => onSelectNote?.(note)}><strong>{note.title || 'Ghi chú chưa có tiêu đề'}</strong><span>{(note.content || 'Chưa có nội dung').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}</span></button></td><td>{note.updatedAt ? formatDate(note.updatedAt) : formatDate(note.createdAt)}</td><td className="private-note-table-actions">{onEditNote && <button type="button" onClick={() => onEditNote(note)} aria-label="Chỉnh sửa ghi chú">Sửa</button>}{onDeleteNote && <button type="button" onClick={() => onDeleteNote(note.id)} aria-label="Xóa ghi chú">Xóa</button>}</td></tr>)}
+          {filteredNotes.map((note) => <tr key={note.id} tabIndex={0} aria-label={`Mở ghi chú ${note.title}`} onClick={() => onSelectNote?.(note)} onKeyDown={(event) => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); onSelectNote?.(note); } }}>
+            <td><button className="private-note-table-open" type="button" onClick={(event) => { event.stopPropagation(); onSelectNote?.(note); }}><strong>{note.title || 'Ghi chú chưa có tiêu đề'}</strong><span>{(note.content || 'Chưa có nội dung').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}</span></button></td>
+            <td>{note.updatedAt ? formatDate(note.updatedAt) : formatDate(note.createdAt)}{note.reminderAt && <span className="directory-reminder"><Icon name="bell" size={13} />{formatReminder(note.reminderAt)}</span>}</td>
+            <td className="private-note-table-actions" onClick={(event) => event.stopPropagation()}>{onEditNote && <button type="button" onClick={() => onEditNote(note)} aria-label="Chỉnh sửa ghi chú">Sửa</button>}{onDeleteNote && <button type="button" onClick={() => onDeleteNote(note.id)} aria-label="Xóa ghi chú"><Icon name="trash" size={15} /></button>}</td>
+          </tr>)}
         </tbody></table></div> : <div className="note-grid">
           {filteredNotes.map((note) => (
             <NoteCard

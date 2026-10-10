@@ -1,0 +1,30 @@
+.reminder-center { position: relative; }
+.reminder-toggle { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border-color, #e5ebf4); border-radius: 11px; color: var(--text-muted, #65738a); background: var(--bg-card, #fff); cursor: pointer; }
+.reminder-toggle:hover, .reminder-toggle[aria-expanded="true"] { color: var(--accent-text, #2463eb); background: color-mix(in srgb, var(--primary-color, #2463eb) 9%, var(--bg-card, #fff)); }
+.reminder-badge { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; color: #fff; background: #c1493e; font-size: .64rem; }
+.reminder-panel { position: absolute; top: 48px; right: -8px; z-index: 600; width: 380px; max-height: min(75vh, 650px); overflow-y: auto; border: 1px solid var(--border-color, #e5ebf4); border-radius: 17px; color: var(--text-main, #17243b); background: var(--bg-card, #fff); box-shadow: 0 16px 60px #0002; }
+.reminder-panel > header { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px; border-bottom: 1px solid var(--border-color, #e5ebf4); }
+.reminder-panel h2 { margin: 0; font-size: 1rem; }
+.reminder-panel h3 { margin: 0 0 10px; font-size: .78rem; }
+.reminder-panel header p { margin: 6px 0 0; color: var(--text-muted); font-size: .75rem; }
+.reminder-panel header > button { display: grid; place-items: center; width: 27px; height: 27px; padding: 0; color: var(--text-muted); border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.reminder-today-list, .reminder-upcoming { padding: 8px 14px; }
+.reminder-list-item { display: flex; align-items: center; gap: 10px; padding: 12px 2px; }
+.reminder-list-item > .app-icon { flex-shrink: 0; color: var(--accent-text, #2463eb); }
+.reminder-list-item > button { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; padding: 0; text-align: left; border: 0; color: inherit; background: transparent; cursor: pointer; }
+.reminder-list-item strong { font-size: .78rem; overflow-wrap: anywhere; }
+.reminder-list-item span, .reminder-list-item small { font-size: .67rem; color: var(--text-muted); }
+.reminder-list-item small { white-space: nowrap; }
+.reminder-due-list { padding: 16px; background: color-mix(in srgb, var(--primary-color, #2463eb) 6%, transparent); }
+.reminder-due-item { display: flex; flex-direction: column; gap: 6px; padding: 12px; margin-top: 8px; border: 1px solid color-mix(in srgb, var(--primary-color, #2463eb) 22%, transparent); border-radius: 10px; background: var(--bg-card, #fff); }
+.reminder-due-item strong { font-size: .85rem; overflow-wrap: anywhere; }
+.reminder-due-item > span { font-size: .7rem; color: var(--text-muted); }
+.reminder-due-item > div { display: flex; gap: 8px; margin-top: 4px; }
+.reminder-due-item button, .reminder-panel footer button { display: inline-flex; align-items: center; gap: 6px; min-height: 33px; padding: 6px 9px; border: 1px solid var(--border-color); border-radius: 7px; background: transparent; color: var(--accent-text, #2463eb); font: inherit; font-size: .72rem; cursor: pointer; }
+.reminder-due-item button:first-child { color: #fff; background: var(--primary-color, #2463eb); border-color: var(--primary-color, #2463eb); }
+.reminder-panel footer { padding: 13px 16px; border-top: 1px solid var(--border-color); }
+.reminder-panel footer > span { display: flex; align-items: center; gap: 6px; font-size: .72rem; color: var(--text-muted); }
+.reminder-panel footer p, .reminder-empty, .reminder-error { color: var(--text-muted); font-size: .72rem; line-height: 1.6; }
+.reminder-error { padding: 0 16px; color: #bc4339; }
+.reminder-panel button:focus-visible, .reminder-toggle:focus-visible { outline: 3px solid var(--primary-color, #2463eb); outline-offset: 2px; }
+@media (max-width: 600px) { .reminder-panel { position: fixed; top: 72px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 90px); } }

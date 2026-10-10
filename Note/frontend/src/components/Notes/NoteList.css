@@ -91,3 +91,6 @@
 .note-grid { gap: 18px; }
 .empty-note-state { background: var(--bg-card); }
 @media (max-width: 750px) { .note-list-header { flex-direction: column; } .note-list-header .header-actions { width: 100%; flex-wrap: wrap; gap: 10px; } .note-list-header .search-bar { flex: 1 1 100%; } }
+.private-note-table tbody tr { cursor: pointer; }
+.private-note-table tbody tr:focus-visible { outline: 2px solid var(--primary-color, #2463eb); outline-offset: -2px; }
+.private-note-table-actions button { display: inline-flex; align-items: center; justify-content: center; }
