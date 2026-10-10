@@ -13,7 +13,6 @@ Bản nộp trên nhánh **main** mở trực tiếp trang ghi chú. Mật khẩ
 | Giảng viên hướng dẫn | Nguyễn Hoàng Việt |
 | Nhóm thực hiện | HKT |
 | Repository | [NguyenKhoa206/DoAnGhiChu](https://github.com/NguyenKhoa206/DoAnGhiChu) |
-| Nhánh bản nộp | main |
 | Ngày hoàn thiện bản nộp | 10/10/2026 |
 
 ## 2. Thành viên và phân công công việc
