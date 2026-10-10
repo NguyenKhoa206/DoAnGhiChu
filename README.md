@@ -59,7 +59,7 @@ Frontend gửi yêu cầu đến API của backend. Backend phân chia xử lý 
 | Nhóm chức năng | Nội dung |
 | --- | --- |
 | Ghi chú | Tạo, xem, chỉnh sửa, xóa; tìm kiếm và sắp xếp |
-| Bộ sưu tập | Tạo, đổi tên, xóa; lưu tên có dấu tiếng Việt |
+| Bộ sưu tập | Tạo, đổi tên, xóa; lưu tên có dấu tiếng Việt; chọn khi tạo ghi chú, chuyển tài liệu giữa các thư mục hoặc về Chưa phân loại |
 | Ghim và yêu thích | Đánh dấu, bỏ đánh dấu, xem danh sách đã lọc |
 | Trình soạn thảo | Đậm, nghiêng, gạch chân, gạch ngang, kiểu đoạn, cỡ chữ, màu, căn lề, danh sách và checklist |
 | Hình ảnh | Chèn ảnh, tối ưu dung lượng, căn ảnh, đổi kích thước, cắt ảnh, thay ảnh và gỡ bằng dấu × |
@@ -77,10 +77,22 @@ Frontend gửi yêu cầu đến API của backend. Backend phân chia xử lý 
 - Khi truy cập `/`, ứng dụng chuyển đến `/dashboard`.
 - Các đường dẫn tài khoản cũ `/login` và `/register` chuyển về trang ghi chú.
 - Ghi chú chưa chọn bộ sưu tập được lưu ở trạng thái **chưa phân loại**, không tự sinh bộ sưu tập “Ghi chú”.
+- Khi tạo ghi chú trong một bộ sưu tập, thư mục đó được chọn sẵn; người dùng vẫn có thể chọn bộ sưu tập khác hoặc Chưa phân loại trước khi lưu.
 - Mục Nhật ký đã được bỏ; dữ liệu ghi chú cũ trong các mục mặc định được chuyển sang chưa phân loại.
 - Người dùng có thể bấm vùng nội dung của dòng/thẻ để mở ghi chú. Nút ghim, yêu thích và xóa hoạt động riêng.
 - Tên bộ sưu tập được lưu riêng với mã dùng trong đường dẫn và tên file, giúp giữ nguyên dấu và cách viết sau khi tải lại trang.
 - Khi đặt hoặc đổi tên, ô nhập giữ nội dung đang ghép dấu và đọc đúng giá trị hiện tại khi lưu.
+
+### Phân loại và chuyển tài liệu
+
+1. Tạo ghi chú mới hoặc mở tài liệu đã có từ danh sách, một bộ sưu tập hay lịch ghi chú.
+2. Trong bảng công cụ, tìm ô **Bộ sưu tập** và chọn thư mục muốn lưu. Danh sách hiển thị các bộ sưu tập đã tạo với tên tiếng Việt có dấu.
+3. Chọn **Chưa phân loại** để đưa tài liệu ra khỏi bộ sưu tập hiện tại.
+4. Nhấn **Lưu**. Ghi chú chuyển khỏi thư mục nguồn và xuất hiện trong thư mục đích; không tạo một bản sao mới.
+
+Mỗi ghi chú thường thuộc một bộ sưu tập hoặc ở trạng thái Chưa phân loại. Khi chuyển, ứng dụng giữ ID, nội dung, tệp đính kèm, ảnh/nền, ghim, yêu thích, ngày ghi chú và lịch nhắc. Nếu chưa có bộ sưu tập, dùng nút **Tạo bộ sưu tập mới** ở thanh bên, sau đó mở lại ghi chú để chọn.
+
+Nếu lưu không thành công, nội dung và lựa chọn trong trình soạn thảo được giữ để thử lại. Bộ sưu tập đích bị xóa sẽ được báo lỗi để chọn thư mục khác. Ghi chú riêng tư được quản lý trong vùng mã hóa riêng và không có bộ chọn thư mục thường.
 
 ## 6. Yêu cầu môi trường
 
@@ -368,8 +380,8 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `DocumentDetailView.jsx` | Trình soạn thảo chi tiết: tiêu đề, HTML, định dạng, ảnh, tệp đính kèm, nền giấy, ngày ghi chú, lịch nhắc, lưu và xuất file; xử lý nhập tiếng Việt. |
-| `DocumentDetailView.css` | Bố cục trang tài liệu, vùng soạn thảo, thanh công cụ, bảng thuộc tính, ảnh đang chọn, tệp đính kèm và responsive. |
+| `DocumentDetailView.jsx` | Trình soạn thảo chi tiết: tiêu đề, HTML, định dạng, ảnh, tệp đính kèm, nền giấy, ngày ghi chú, lịch nhắc, chọn/chuyển bộ sưu tập, lưu và xuất file; xử lý nhập tiếng Việt và giữ nháp khi lưu lỗi. |
+| `DocumentDetailView.css` | Bố cục trang tài liệu, vùng soạn thảo, thanh công cụ, bảng thuộc tính, ô chọn bộ sưu tập, ảnh đang chọn, tệp đính kèm và responsive. |
 | `ExportNoteButton.jsx` | Menu xuất nội dung hiện tại sang DOCX hoặc TXT; gọi tiện ích tải file, khóa thao tác khi đang xuất và thông báo kết quả. |
 | `ExportNoteButton.css` | Giao diện nút xuất, menu chọn định dạng và trạng thái hover/đang xử lý. |
 | `NoteCard.jsx` | Hiển thị một ghi chú dạng thẻ với tiêu đề, trích đoạn và thời gian; hỗ trợ mở bằng chuột/bàn phím, sửa và xóa. |
@@ -416,9 +428,9 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `DashboardPage.jsx` | Trang ghi chú chính: danh sách/bộ sưu tập, tìm kiếm, lọc, bảng/lưới, tạo/sửa, nháp, ghim, yêu thích và xác nhận xóa; bỏ phản hồi API cũ để giữ dữ liệu/tên mới. |
+| `DashboardPage.jsx` | Trang ghi chú chính: danh sách/bộ sưu tập, tìm kiếm, lọc, bảng/lưới, tạo/sửa, chuyển thư mục, nháp, ghim, yêu thích và xác nhận xóa; cập nhật danh sách nguồn sau chuyển và bỏ phản hồi API cũ. |
 | `DashboardPage.css` | Bố cục dashboard, thanh thao tác, thư mục/bộ sưu tập, bảng/lưới ghi chú và vùng xem tài liệu. |
-| `CalendarPage.jsx` | Hiển thị ghi chú thường theo ngày, chuyển tháng, xem ngày âm lịch và mở/sửa/xóa ghi chú từ lịch. |
+| `CalendarPage.jsx` | Hiển thị ghi chú thường theo ngày, chuyển tháng, xem ngày âm lịch; tạo/mở/sửa/xóa và chọn/chuyển bộ sưu tập từ lịch mà vẫn giữ ngày ghi chú. |
 | `CalendarPage.css` | Định dạng lưới lịch, ngày đang chọn, ghi chú theo ngày và bố cục lịch responsive. |
 | `PrivateNotePage.jsx` | Mở khóa vùng riêng tư, giữ mật khẩu/token trong bộ nhớ, giải mã để xem và mã hóa lại khi lưu; xử lý xóa và khóa phiên. |
 | `PrivateNotePage.css` | Định dạng màn hình đang khóa, danh sách ghi chú riêng tư, vùng nội dung và trạng thái mở khóa. |
@@ -445,7 +457,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | File | Tác dụng |
 | --- | --- |
 | `api.js` | Tạo Axios instance dùng chung với địa chỉ API, header JSON và thời gian chờ; các service khác dùng instance này. |
-| `noteService.js` | Gọi API bộ sưu tập, ghi chú thường/riêng tư, thùng rác và lịch nhắc; gửi token cho yêu cầu riêng tư và phát sự kiện cập nhật lịch nhắc. |
+| `noteService.js` | Gọi API bộ sưu tập, ghi chú thường/riêng tư, thùng rác và lịch nhắc; phân biệt bộ sưu tập nguồn trong URL với đích trong dữ liệu cập nhật; gửi token riêng tư và phát sự kiện cập nhật lịch nhắc. |
 | `privateService.js` | Gọi API kiểm tra trạng thái, thiết lập, xác thực và đổi mật khẩu vùng riêng tư. |
 | `userService.js` | Gọi API lấy/cập nhật hồ sơ và lưu nhanh tùy chọn giao diện. |
 
@@ -508,7 +520,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | File | Tác dụng |
 | --- | --- |
 | `authController.js` | Xử lý mật khẩu riêng tư: kiểm tra trạng thái, băm bcrypt, thiết lập/mở khóa/đổi mật khẩu và cập nhật dữ liệu đã mã hóa lại. |
-| `noteController.js` | Xử lý tạo/đọc/sửa/xóa ghi chú và bộ sưu tập, tên tiếng Việt, kiểm tra dữ liệu, thùng rác, khôi phục và xóa vĩnh viễn. |
+| `noteController.js` | Xử lý ghi chú/bộ sưu tập, tên tiếng Việt, kiểm tra dữ liệu và thùng rác; chuyển ghi chú giữa các file JSON, kiểm tra đích và hoàn tác bản sao khi ghi nguồn lỗi để giữ dữ liệu cũ. |
 | `reminderController.js` | Tổng hợp lịch nhắc, ẩn tiêu đề thật của ghi chú riêng tư và ghi nhận đã thông báo để hạn chế thông báo trùng. |
 | `userController.js` | Đọc/cập nhật hồ sơ, avatar và tùy chọn giao diện; kiểm tra dữ liệu và loại bỏ thông tin mật khẩu khỏi phản hồi. |
 
@@ -544,7 +556,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
+| `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, chọn/chuyển thư mục, lỗi ghi và hoàn tác, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
 | `security.test.js` | Kiểm tra lọc HTML nguy hiểm, giữ định dạng an toàn, giới hạn ảnh/ảnh nền và cấu hình JWT trong development/production. |
 
 **Tình trạng E2E trên main:** `playwright.config.js` và lệnh `test:e2e` vẫn còn, nhưng thư mục `Note/frontend/e2e/` đã được xóa và `package.json` hiện không khai báo `@playwright/test`. Vì vậy, đây chưa phải một bộ E2E chạy được ngay sau `npm install`. Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả kiểm thử được trình bày ở mục 14.
@@ -667,9 +679,10 @@ URL gốc mặc định: **`http://localhost:5000/api`**.
 | PATCH | `/users/preferences` | Cập nhật tùy chọn giao diện |
 | GET / POST | `/notes/topics` | Danh sách / tạo bộ sưu tập |
 | PUT / DELETE | `/notes/topics/:topicId` | Đổi tên / xóa bộ sưu tập |
-| GET / POST | `/notes` | Đọc tất cả / tạo ghi chú chưa phân loại |
+| GET / POST | `/notes` | Đọc tất cả / tạo ghi chú; `topicSlug` chọn bộ sưu tập, bỏ trống để chưa phân loại |
 | GET / POST | `/notes/:topic` | Đọc / tạo ghi chú trong bộ sưu tập |
-| PUT / DELETE | `/notes/:topic/:noteId` | Sửa / xóa ghi chú trong bộ sưu tập |
+| PUT / DELETE | `/notes/:noteId` | Sửa / xóa theo ID; PUT có thể đổi bộ sưu tập |
+| PUT / DELETE | `/notes/:topic/:noteId` | Sửa / xóa trong bộ sưu tập nguồn; PUT nhận `topicSlug` là đích mới |
 | GET | `/notes/trash` | Danh sách thùng rác thường |
 | POST | `/notes/trash/:noteId/restore` | Khôi phục ghi chú thường |
 | DELETE | `/notes/trash/:noteId` | Xóa vĩnh viễn ghi chú thường |
@@ -686,6 +699,14 @@ URL gốc mặc định: **`http://localhost:5000/api`**.
 | POST | `/notes/reminders/:noteId/deliver` | Ghi nhận lịch đến hạn đã được nhắc |
 
 Các API quản lý ghi chú và hồ sơ thông thường sử dụng sổ tay cá nhân. API đọc/thay đổi ghi chú và thùng rác riêng tư yêu cầu phiên mở khóa hợp lệ; `/private/auth` nhận mật khẩu để cấp phiên đó.
+
+Để chuyển ghi chú, gửi PUT tới URL có ID của ghi chú (và bộ sưu tập **nguồn**, nếu dùng URL theo thư mục), với dữ liệu ví dụ:
+
+```json
+{ "topicSlug": "cong-viec" }
+```
+
+Gửi `"topicSlug": ""` để chuyển về Chưa phân loại; không gửi trường này nếu chỉ cập nhật nội dung và giữ nơi lưu. Đích phải là bộ sưu tập còn tồn tại. Có thể gửi đồng thời tiêu đề, nội dung và các thuộc tính khác trong cùng yêu cầu. Backend trả ghi chú đã lưu với `topicSlug` mới; lỗi nhập liệu/đích thiếu/trùng ID lần lượt trả 400/404/409.
 
 ## 14. Kiểm thử và tạo bản build
 
@@ -713,14 +734,15 @@ Bản build frontend nằm tại `Note/frontend/dist/`. Có thể chạy `npm ru
 
 ### Kết quả đã ghi nhận ngày 10/10/2026
 
-Mốc kiểm thử ban đầu: [206033c](https://github.com/NguyenKhoa206/DoAnGhiChu/commit/206033cdb503254eb809cf82b65d7c9dfe38fd76). Trong đợt sửa bổ sung cùng ngày, các bộ test được chạy lại và thêm kiểm tra chốt dấu khi bấm lưu, phản hồi tải danh sách đến muộn, đổi tên, hủy thao tác và lỗi tải danh sách.
+Mốc kiểm thử ban đầu: [206033c](https://github.com/NguyenKhoa206/DoAnGhiChu/commit/206033cdb503254eb809cf82b65d7c9dfe38fd76). Các đợt bổ sung cùng ngày đã kiểm tra chốt dấu khi bấm lưu, phản hồi danh sách đến muộn và chọn/chuyển bộ sưu tập. Đợt thêm chuyển thư mục chạy lại backend/frontend unit, lint, build; bổ sung 11 test API và 20 lượt UI trên desktop/mobile.
 
 | Nội dung | Kết quả đã ghi nhận |
 | --- | --- |
-| Backend unit/API | 49/49 test đạt |
+| Backend unit/API | 60/60 test đạt |
 | Frontend unit | 26/26 test đạt |
 | Kiểm tra ô tên bộ sưu tập ở desktop/mobile | 14/14 lượt đạt; sử dụng IME mô phỏng của Chromium |
 | Kiểm tra chốt dấu khi bấm lưu và phản hồi tải cũ ở desktop/mobile | 12/12 lượt đạt; 6 kịch bản chạy trên 2 kích thước màn hình, có mô phỏng IME/mạng chậm |
+| Kiểm tra chọn/chuyển bộ sưu tập ở desktop/mobile | 20/20 lượt đạt; 10 kịch bản chạy trên 2 kích thước màn hình, gồm lưu lỗi/thử lại, đích đã xóa, lịch ghi chú, dữ liệu riêng tư và lưu nhiều lần không trùng |
 | Lint frontend | Đạt |
 | Build frontend | Đạt |
 
@@ -732,6 +754,8 @@ Số lượt UI có thể gồm cùng một kịch bản chạy trên desktop v�
 - Tiêu đề trống, toàn khoảng trắng, tên bộ sưu tập sai hoặc quá dài.
 - Tạo, sửa, xóa, khôi phục, ghim và yêu thích ghi chú.
 - Tên bộ sưu tập có dấu, đổi tên chỉ thêm dấu và giữ tên sau F5.
+- Chọn thư mục khi tạo từ dashboard/bộ sưu tập/lịch; chuyển giữa thư mục và Chưa phân loại, giữ ID/tệp/lịch nhắc, cập nhật danh sách nguồn và không tạo bản trùng.
+- Chuyển vào thư mục thiếu, trùng ID, JSON đích hỏng, lỗi ghi nguồn/đích, lưu đồng thời; giữ dữ liệu cũ, báo lỗi và cho thử lại.
 - Bật/tắt định dạng, danh sách, xóa định dạng và nhập tiếng Việt.
 - Chèn ảnh, giới hạn dung lượng, gỡ ảnh/tệp và giữ dữ liệu sau khi lưu.
 - Xuất TXT/DOCX, nội dung Unicode và định dạng tài liệu.
@@ -753,6 +777,7 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Nhập liệu | Chặn tiêu đề trống hoặc toàn khoảng trắng; kiểm tra tên bộ sưu tập |
 | Tiếng Việt | Bảo vệ quá trình ghép dấu trong editor và ô tên bộ sưu tập; chuẩn hóa Unicode khi lưu |
 | Bộ sưu tập | Chờ bộ gõ chốt dấu khi tạo/đổi tên; bỏ phản hồi tải cũ ghi đè tên mới; giữ tên sau F5, đổi tên và khôi phục đúng; bổ sung nhãn Học/Ý tưởng cho dữ liệu cũ chưa lưu tên |
+| Phân loại tài liệu | Thêm ô chọn bộ sưu tập khi tạo/sửa; chuyển giữa thư mục và Chưa phân loại; dùng URL nguồn và slug đích riêng, cập nhật danh sách, giữ dữ liệu và hoàn tác khi ghi lỗi |
 | Định dạng | Bật/tắt đậm, nghiêng, gạch chân, gạch ngang; xóa kiểu chữ đang chờ khi editor rỗng |
 | Hình ảnh | Tối ưu dung lượng, tránh dán trùng, giữ dữ liệu GIF và xử lý ảnh hỏng |
 | Tệp đính kèm | Gỡ cả tệp, chip/link và thông tin đi kèm bằng dấu × |

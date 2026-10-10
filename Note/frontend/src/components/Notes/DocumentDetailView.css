@@ -58,6 +58,10 @@
 .inspector-control-row { display: grid; grid-template-columns: 1.1fr .9fr; gap: 7px; }
 .inspector-control-row select { min-width: 0; padding: 8px 7px; color: var(--doc-ink); background: transparent; border: 1px solid var(--doc-line); border-radius: 7px; font-size: .69rem; }
 .inspector-date-input { width: 100%; min-height: 36px; padding: 7px 9px; color: var(--doc-ink); background: transparent; border: 1px solid var(--doc-line); border-radius: 8px; font-size: .74rem !important; }
+.document-topic-section { padding: 18px 16px; border-bottom: 1px solid var(--doc-line); }
+.document-topic-section label { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: var(--doc-ink); font-size: .78rem; font-weight: 650; }
+.document-topic-section select { min-width: 0; max-width: 100%; background: var(--bg-card); }
+.document-topic-section select:focus-visible { outline: 2px solid var(--primary-color, #2463eb); outline-offset: 2px; }
 .inspector-button-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
 .inspector-button-grid button, .inspector-button-grid label { min-width: 0; height: 34px; display: grid; place-items: center; color: var(--doc-ink); background: transparent; border: 1px solid transparent; border-radius: 7px; cursor: pointer; font-size: .8rem; }
 .inspector-button-grid button:hover, .inspector-button-grid label:hover { background: color-mix(in srgb, var(--doc-muted) 10%, transparent); border-color: var(--doc-line); }

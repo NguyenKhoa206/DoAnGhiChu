@@ -83,11 +83,11 @@ const noteService = {
   },
 
   /**
-   * Cập nhật nội dung/tiêu đề ghi chú công khai
-   * PUT /api/notes/:topic/:noteId (hỗ trợ URL cũ chỉ có noteId)
+   * Cập nhật ghi chú, có thể đổi bộ sưu tập qua noteData.topicSlug.
+   * URL dùng bộ sưu tập nguồn; bỏ nguồn để tìm theo ID trong toàn bộ sổ tay.
    */
-  updateNote: async (noteId, noteData) => {
-    const response = await api.put(`${topicPath(noteData.topicSlug)}/${encodeURIComponent(noteId)}`, noteData);
+  updateNote: async (noteId, noteData, sourceTopicSlug) => {
+    const response = await api.put(`${topicPath(sourceTopicSlug)}/${encodeURIComponent(noteId)}`, noteData);
     announceReminderChange();
     return savedNoteOf(response);
   },

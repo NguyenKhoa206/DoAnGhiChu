@@ -52,23 +52,23 @@ const CalendarPage = () => {
   }, {}), [notes]);
   const selectedNotes = byDate[selectedDate] || [];
   const moveMonth = (offset) => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
-  const save = async (data) => {
+  const save = async (data, sourceTopicSlug) => {
     if (data.noteDate && data.noteDate < todayKey) {
       const message = 'Không thể lưu ghi chú cho ngày đã qua.';
       setError(message);
       throw new Error(message);
     }
-    const topicSlug = data.topicSlug || editing?.topicSlug || '';
+    const topicSlug = data.topicSlug ?? editing?.topicSlug ?? '';
     const payload = { ...data, noteDate: data.noteDate || selectedDate, topicSlug };
     try {
       const response = payload.id
-        ? await noteService.updateNote(payload.id, payload)
+        ? await noteService.updateNote(payload.id, payload, sourceTopicSlug ?? editing?.topicSlug)
         : await noteService.createNote(payload);
       const savedNote = response.data || response;
       setNotes((current) => savedNote?.id
         ? (payload.id
-          ? current.map((note) => note.id === payload.id ? { ...note, ...savedNote, topicSlug: savedNote.topicSlug || topicSlug } : note)
-          : [{ ...savedNote, topicSlug: savedNote.topicSlug || topicSlug }, ...current.filter((note) => note.id !== savedNote.id)])
+          ? current.map((note) => note.id === payload.id ? { ...note, ...savedNote, topicSlug: savedNote.topicSlug ?? topicSlug } : note)
+          : [{ ...savedNote, topicSlug: savedNote.topicSlug ?? topicSlug }, ...current.filter((note) => note.id !== savedNote.id)])
         : current);
       setError('');
       await reload();
@@ -100,7 +100,7 @@ const CalendarPage = () => {
       backLabel="Lịch ghi chú"
       readOnly={isPastSelectedDate}
       onBack={() => { setEditorOpen(false); setEditing(null); }}
-      onSave={(noteId, changes) => save({ ...changes, id: noteId || undefined })}
+      onSave={(noteId, changes, sourceTopicSlug) => save({ ...changes, id: noteId || undefined }, sourceTopicSlug)}
       onDelete={(noteId) => setNoteToDelete(notes.find((note) => note.id === noteId))}
     /> : <>
     <header className="calendar-heading">

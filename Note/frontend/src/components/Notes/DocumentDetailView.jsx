@@ -41,6 +41,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
   const [backgroundColor, setBackgroundColor] = useState(draft?.backgroundColor ?? note.backgroundColor ?? '#fffdf8');
   const [backgroundImage, setBackgroundImage] = useState(draft?.backgroundImage ?? note.backgroundImage ?? '');
   const [noteDate, setNoteDate] = useState(() => draft?.noteDate ?? note.noteDate ?? getLocalDate());
+  const [topicSlug, setTopicSlug] = useState(() => draft?.topicSlug ?? note.topicSlug ?? '');
   const [reminderInput, setReminderInput] = useState(() => toLocalReminderInput(draft?.reminderAt !== undefined ? draft.reminderAt : note.reminderAt));
   const [reminderValidation, setReminderValidation] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
@@ -113,6 +114,7 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
     || backgroundColor !== (documentNote.backgroundColor || '#fffdf8')
     || backgroundImage !== (documentNote.backgroundImage || '')
     || noteDate !== (documentNote.noteDate || initialNoteDate)
+    || (!isPrivate && topicSlug !== (documentNote.topicSlug ?? ''))
     || reminderInput !== toLocalReminderInput(documentNote.reminderAt);
 
   const rememberSelection = () => {
@@ -524,16 +526,18 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
         setReminderValidation(reminderAt === undefined ? 'Vui lòng chọn đầy đủ ngày và giờ nhắc.' : 'Thời gian nhắc phải ở trong tương lai.');
         return;
       }
-      const changes = { title: savedTitle, content: editorRef.current?.innerHTML ?? content, noteDate, reminderAt, attachments, backgroundColor, backgroundImage };
+      const changes = { title: savedTitle, content: editorRef.current?.innerHTML ?? content, noteDate, reminderAt, attachments, backgroundColor, backgroundImage, ...(!isPrivate && { topicSlug }) };
       const sizeError = noteMediaSizeError({ ...changes, isPrivate });
       if (sizeError) {
         setMediaFeedback({ text: sizeError, error: true });
         return;
       }
-      const result = await onSave(documentNote.id || null, changes);
+      const result = await onSave(documentNote.id || null, changes, documentNote.topicSlug ?? '');
       setTitle(savedTitle);
       if (titleInputRef.current) titleInputRef.current.value = savedTitle;
-      setSavedNote({ ...documentNote, ...(result || {}), ...changes });
+      const savedTopicSlug = result?.topicSlug ?? topicSlug;
+      setSavedNote({ ...documentNote, ...(result || {}), ...changes, ...(!isPrivate && { topicSlug: savedTopicSlug }) });
+      if (!isPrivate) setTopicSlug(savedTopicSlug);
       setMessage('Đã lưu');
     } catch (error) {
       setSaveError(error.response?.data?.message || error.message || 'Lưu chưa thành công');
@@ -643,6 +647,19 @@ const DocumentDetailView = ({ note = {}, draft = null, topics = [], onBack, back
         </main>
 
         <aside className="document-inspector" aria-label="Công cụ tài liệu">
+          {!isPrivate && !readOnly && <section className="document-topic-section">
+            <label htmlFor={`${saveErrorId}-topic`}><Icon name="folder" size={16} /> Bộ sưu tập</label>
+            <select id={`${saveErrorId}-topic`} className="inspector-date-input" value={topicSlug} disabled={saving || mediaBusy} aria-describedby={`${saveErrorId}-topic-hint`} onChange={(event) => {
+              const next = event.target.value;
+              setTopicSlug(next); setMessage(''); setSaveError('');
+              onDraftChange?.(documentNote.id, { topicSlug: next });
+            }}>
+              <option value="">Chưa phân loại</option>
+              {topics.map((item) => <option key={item.slug || item.id} value={item.slug || item.id}>{item.name}</option>)}
+              {topicSlug && !topics.some((item) => (item.slug || item.id) === topicSlug) && <option value={topicSlug} disabled>Bộ sưu tập hiện tại (không có trong danh sách)</option>}
+            </select>
+            <p id={`${saveErrorId}-topic-hint`} className="inspector-hint">Chọn bộ sưu tập rồi nhấn Lưu để phân loại hoặc chuyển tài liệu.</p>
+          </section>}
           <nav className="document-inspector-tabs" role="tablist" aria-label="Bảng công cụ">
             {(readOnly ? ['Thông tin'] : ['Thêm', 'Định dạng', 'Thông tin', ...(selectedImage ? ['Ảnh'] : [])]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={selectedTab === tab} className={selectedTab === tab ? 'active' : ''} onMouseDown={tab === 'Thêm' ? rememberSelection : undefined} onClick={() => setActiveTab(tab)}>{tab}</button>)}
           </nav>

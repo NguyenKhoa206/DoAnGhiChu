@@ -209,11 +209,11 @@ const DashboardPage = () => {
   };
   const viewTitle = viewTitles[currentView] || 'Tất cả tài liệu';
 
-  const handleCreateOrUpdate = async (noteData) => {
+  const handleCreateOrUpdate = async (noteData, sourceTopicSlug) => {
     try {
       let savedNote;
       const createFromView = !noteData.id;
-      const topicForNewNote = topicSlug || noteData.topicSlug || '';
+      const topicForNewNote = noteData.topicSlug ?? topicSlug ?? '';
       const savePayload = {
         ...noteData,
         ...(!noteData.id && {
@@ -223,7 +223,7 @@ const DashboardPage = () => {
         }),
       };
       if (noteData.id) {
-        const response = await noteService.updateNote(noteData.id, savePayload);
+        const response = await noteService.updateNote(noteData.id, savePayload, sourceTopicSlug);
         savedNote = response.data || response;
         showToast('Đã cập nhật ghi chú.', 'success');
       } else {
@@ -262,7 +262,7 @@ const DashboardPage = () => {
         ...activeDraft,
         title: draftTitle.trim() || 'Không tiêu đề',
         content: draftContent.trim(),
-      });
+      }, activeNote.topicSlug);
       const savedNote = response.data || response;
       setNotes((current) => current.map((note) => note.id === activeNote.id ? { ...note, ...savedNote } : note));
       setNoteDrafts((current) => {
@@ -276,11 +276,11 @@ const DashboardPage = () => {
     }
   }, [activeDraft, activeNote, draftContent, draftTitle, showToast]);
 
-  const saveDashboardDocument = async (noteId, changes) => handleCreateOrUpdate({
+  const saveDashboardDocument = async (noteId, changes, sourceTopicSlug) => handleCreateOrUpdate({
     ...changes,
     id: noteId || undefined,
     ...(!noteId && { noteDate: changes.noteDate || new Date().toLocaleDateString('sv-SE') }),
-  });
+  }, sourceTopicSlug);
 
   useEffect(() => {
     const handleShortcut = (event) => {
@@ -339,12 +339,13 @@ const DashboardPage = () => {
     } finally { setDeleting(false); }
   };
 
-  const saveDirectoryNote = async (noteId, changes) => {
+  const saveDirectoryNote = async (noteId, changes, sourceTopicSlug) => {
     try {
-      const response = await noteService.updateNote(noteId, changes);
+      const response = await noteService.updateNote(noteId, changes, sourceTopicSlug ?? detailNote.topicSlug);
       const savedNote = response.data || response;
       const updatedNote = { ...detailNote, ...changes, ...savedNote };
-      setNotes((current) => current.map((note) => note.id === noteId ? updatedNote : note));
+      setNotes((current) => current.flatMap((note) => note.id === noteId
+        ? (!topicSlug || updatedNote.topicSlug === topicSlug ? [updatedNote] : []) : [note]));
       setDetailNote(updatedNote);
       setNoteDrafts((current) => { const next = { ...current }; delete next[noteId]; return next; });
       showToast('Đã lưu tài liệu.', 'success');
@@ -392,6 +393,7 @@ const DashboardPage = () => {
           note={detailNote}
           draft={noteDrafts[detailNote.id]}
           topics={topics}
+          backLabel={viewTitle}
           onDraftChange={updateNoteDraft}
           onBack={() => setDetailNote(null)}
           onSave={saveDirectoryNote}
@@ -402,13 +404,13 @@ const DashboardPage = () => {
       ) : (isEditorOpen || isNewNoteRequested) ? (
         <DocumentDetailView
           key={editingNote?.id || 'dashboard-new-note'}
-          note={editingNote || { noteDate: new Date().toLocaleDateString('sv-SE') }}
+          note={editingNote || { noteDate: new Date().toLocaleDateString('sv-SE'), topicSlug: topicSlug || '' }}
           draft={editingNote ? noteDrafts[editingNote.id] : null}
           topics={topics}
           backLabel={viewTitle}
           onDraftChange={updateNoteDraft}
           onBack={closeEditor}
-          onSave={(noteId, changes) => handleCreateOrUpdate({ ...changes, id: noteId || undefined })}
+          onSave={(noteId, changes, sourceTopicSlug) => handleCreateOrUpdate({ ...changes, id: noteId || undefined }, sourceTopicSlug)}
           onDelete={requestDeleteNote}
         />
       ) : <div className={'nep-workspace' + (isDirectoryView ? ' all-notes-workspace' : '')}>
@@ -466,7 +468,7 @@ const DashboardPage = () => {
                             <span className="directory-note-preview">{(note.content || 'Tài liệu trống').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 130)}</span>
                           </button>
                         </td>
-                        <td>{topics.find((topic) => topic.slug === note.topicSlug || topic.id === note.topicSlug)?.name || '—'}</td>
+                        <td>{topics.find((topic) => topic.slug === note.topicSlug || topic.id === note.topicSlug)?.name || 'Chưa phân loại'}</td>
                         <td>{formatDate(note.updatedAt || note.createdAt)}{note.reminderAt && <span className="directory-reminder"><Icon name="bell" size={13} />{formatReminder(note.reminderAt)}</span>}</td>
                         <td className="directory-note-actions-cell">
                           <QuickActions note={note} flags={flags} onToggle={toggleNoteFlag} onDelete={requestDeleteNote} />

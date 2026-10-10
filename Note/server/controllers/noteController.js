@@ -6,6 +6,7 @@ const { cleanNoteContent } = require('../utils/noteContent');
 const { isValidNoteBackgroundImage } = require('../utils/noteBackground');
 const { normalizeReminder, reminderError } = require('../utils/noteReminder');
 const isTopicSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 80;
+const isDestinationTopic = (value) => value === '' || (isTopicSlug(value) && !['ghi-chu', 'nhat-ky'].includes(value));
 const validDate = (value) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -297,6 +298,9 @@ const noteController = {
       if (typeof content !== 'string') return res.status(400).json({ message: 'Nội dung ghi chú phải là văn bản.' });
       if (topicSlug !== undefined && (typeof topicSlug !== 'string' || topicSlug.length > 80)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
       if (req.params?.topic !== undefined && !isTopicSlug(req.params.topic)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
+      if (req.body.topicSlug !== undefined && (!isDestinationTopic(req.body.topicSlug) || (req.params?.topic !== undefined && req.body.topicSlug !== req.params.topic))) {
+        return res.status(400).json({ message: 'Bộ sưu tập đích không hợp lệ.' });
+      }
       if ((isFavorite !== undefined && typeof isFavorite !== 'boolean') || (isPinned !== undefined && typeof isPinned !== 'boolean')) return res.status(400).json({ message: 'Trạng thái ghim hoặc yêu thích không hợp lệ.' });
       if (!isValidNoteBackgroundImage(backgroundImage)) return res.status(400).json({ message: 'Ảnh nền không hợp lệ hoặc vượt quá 800 KB.' });
       if (!attachmentsAreValid(attachments)) return res.status(400).json({ message: 'Tệp đính kèm không đúng định dạng hoặc vượt giới hạn 6 tệp, 800 KB mỗi tệp.' });
@@ -309,6 +313,9 @@ const noteController = {
       const targetFile = fileOfTopic(slugify(topicSlug || ''));
       const targetSlug = topicOfFile(targetFile);
       const filePath = path.join(notesDir, targetFile);
+      if (req.body.topicSlug !== undefined && targetSlug && !await fs.pathExists(filePath)) {
+        return res.status(404).json({ message: 'Bộ sưu tập đích không còn tồn tại. Vui lòng chọn bộ sưu tập khác.' });
+      }
 
       let notes = [];
       if (await fs.pathExists(filePath)) {
@@ -349,9 +356,12 @@ const noteController = {
     try {
       const userId = req.user.userId;
       const { noteId } = req.params;
-      const { title, content, noteDate, reminderAt, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
+      const { title, content, topicSlug, noteDate, reminderAt, backgroundColor, backgroundImage, attachments, isFavorite, isPinned } = req.body;
       const topic = req.params.topic;
       if (topic !== undefined && !isTopicSlug(topic)) return res.status(400).json({ message: 'Mã chủ đề không hợp lệ.' });
+      if (topicSlug !== undefined && !isDestinationTopic(topicSlug)) {
+        return res.status(400).json({ message: 'Bộ sưu tập đích không hợp lệ.' });
+      }
       if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.trim().length > 160)) {
         return res.status(400).json({ message: 'Tiêu đề ghi chú cần từ 1 đến 160 ký tự, không chỉ gồm khoảng trắng.' });
       }
@@ -380,7 +390,7 @@ const noteController = {
           if (scheduleError) return res.status(400).json({ message: scheduleError });
           const nextReminder = reminderAt === undefined ? notes[index].reminderAt || null : normalizeReminder(reminderAt);
           found = true;
-          notes[index] = {
+          const nextNote = {
             ...notes[index],
             title: title !== undefined ? (title.normalize('NFC').trim()) : notes[index].title,
             content: content !== undefined ? cleanNoteContent(content) : notes[index].content,
@@ -395,8 +405,32 @@ const noteController = {
             updatedAt: new Date().toISOString(),
           };
 
-          updatedNote = { ...notes[index], topicSlug: topicOfFile(fileName) };
-          await writeJsonFile(filePath, notes);
+          const targetFile = topicSlug === undefined ? fileName : fileOfTopic(topicSlug);
+          if (targetFile === fileName) {
+            notes[index] = nextNote;
+            await writeJsonFile(filePath, notes);
+          } else {
+            const targetPath = path.join(notesDir, targetFile);
+            const targetExists = await fs.pathExists(targetPath);
+            if (topicSlug && !targetExists) {
+              return res.status(404).json({ message: 'Bộ sưu tập đích không còn tồn tại. Vui lòng chọn bộ sưu tập khác.' });
+            }
+            const targetNotes = targetExists ? await readArray(targetPath) : [];
+            if (targetNotes.some((item) => item.id === noteId)) {
+              return res.status(409).json({ message: 'Ghi chú đã tồn tại trong bộ sưu tập đích. Vui lòng tải lại trang.' });
+            }
+            // Keep the original until the destination is saved; undo the copy
+            // if removing it from the source fails. Mutations are queued below.
+            await writeJsonFile(targetPath, [nextNote, ...targetNotes]);
+            try {
+              await writeJsonFile(filePath, notes.filter((item) => item.id !== noteId));
+            } catch (writeError) {
+              if (targetExists) await writeJsonFile(targetPath, targetNotes);
+              else await fs.remove(targetPath);
+              throw writeError;
+            }
+          }
+          updatedNote = { ...nextNote, topicSlug: topicOfFile(targetFile) };
           break;
         }
       }

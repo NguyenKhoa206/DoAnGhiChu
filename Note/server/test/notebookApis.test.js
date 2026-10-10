@@ -452,6 +452,210 @@ test('regular CRUD persists Vietnamese, topic boundaries, favorite/pin flags and
   assert.equal((await request('/notes/hoc-tap')).body[0].id, note.id);
 });
 
+test('creating notes honors an explicit existing collection and rejects stale or invalid selections', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  for (const url of ['/notes', '/notes/hoc-tap']) {
+    const created = await request(url, 'POST', { title: 'Phân loại khi tạo', topicSlug: 'hoc-tap' });
+    assert.equal(created.status, 201);
+    assert.equal((created.body.note || created.body).topicSlug, 'hoc-tap');
+  }
+  assert.equal((await request('/notes/hoc-tap')).body.length, 2);
+  const before = (await request('/notes')).body;
+  for (const topicSlug of [null, {}, '../private', 'Học tập', 'ghi-chu', 'nhat-ky']) {
+    assert.equal((await request('/notes', 'POST', { title: 'Không được tạo', topicSlug })).status, 400);
+  }
+  assert.equal((await request('/notes/hoc-tap', 'POST', { title: 'Nguồn và đích không khớp', topicSlug: '' })).status, 400);
+  assert.equal((await request('/notes', 'POST', { title: 'Đích chưa tạo', topicSlug: 'khong-ton-tai' })).status, 404);
+  assert.deepEqual((await request('/notes')).body, before);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', 'khong-ton-tai.json')), false);
+  await request('/notes/topics/hoc-tap', 'DELETE');
+  assert.equal((await request('/notes/hoc-tap', 'POST', { title: 'Đích đã xóa', topicSlug: 'hoc-tap' })).status, 404);
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  assert.equal((await request('/notes', 'POST', { title: 'Tạo chưa phân loại', topicSlug: '' })).status, 201);
+});
+
+test('filing an unclassified note preserves its ID, media, flags, dates and delivered reminder state', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const existing = (await request('/notes/hoc-tap', 'POST', { title: 'Tài liệu có sẵn' })).body.note;
+  const saved = (await request('/notes', 'POST', {
+    title: 'Tài liệu tiếng Việt', content: '<p><strong>Nội dung có dấu</strong></p>',
+    attachments: [{ id: 'file_move123', name: 'Tài liệu.txt', dataUrl: 'data:text/plain;base64,VGVzdA==' }],
+    backgroundColor: '#e9f3ef', isFavorite: true, isPinned: true,
+    noteDate: '2026-10-10', reminderAt: new Date(Date.now() + 3600000).toISOString(),
+  })).body;
+  const sourcePath = path.join(temporary, 'notes', '_unfiled.json');
+  const original = await fs.readJson(sourcePath);
+  original[0].reminderNotifiedAt = new Date().toISOString();
+  await fs.writeJson(sourcePath, original);
+  const before = (await request('/notes')).body.find((note) => note.id === saved.id);
+  const result = await request(`/notes/${saved.id}`, 'PUT', { topicSlug: 'hoc-tap' });
+  assert.equal(result.status, 200);
+  assert.deepEqual({ ...result.body, topicSlug: '', updatedAt: before.updatedAt }, before);
+  assert.equal(result.body.topicSlug, 'hoc-tap');
+  assert.deepEqual(await fs.readJson(sourcePath), []);
+  const destination = (await request('/notes/hoc-tap')).body;
+  assert.deepEqual(destination.map((note) => note.id), [saved.id, existing.id]);
+  assert.equal((await request('/notes')).body.filter((note) => note.id === saved.id).length, 1);
+  assert.equal((await request('/notes/topics')).body[0].name, 'Học tập');
+});
+
+test('moving between collections saves edits and deletion restores to the new collection', async () => {
+  for (const name of ['Học tập', 'Công việc']) await request('/notes/topics', 'POST', { name });
+  const note = (await request('/notes/hoc-tap', 'POST', { title: 'Tài liệu ban đầu', content: '<p>Nội dung</p>' })).body.note;
+  const names = await fs.readJson(path.join(temporary, 'topics.json'));
+  const moved = await request(`/notes/hoc-tap/${note.id}`, 'PUT', {
+    topicSlug: 'cong-viec', title: '  Tài liệu đã chuyển  ', content: '<p>Nội dung đã sửa</p>',
+  });
+  assert.equal(moved.status, 200);
+  assert.equal(moved.body.note.title, 'Tài liệu đã chuyển');
+  assert.equal(moved.body.note.content, '<p>Nội dung đã sửa</p>');
+  assert.equal(moved.body.note.topicSlug, 'cong-viec');
+  assert.equal(moved.body.note.createdAt, note.createdAt);
+  assert.deepEqual((await request('/notes/hoc-tap')).body, []);
+  assert.equal((await request(`/notes/hoc-tap/${note.id}`, 'PUT', { title: 'Thư mục nguồn cũ' })).status, 404);
+  assert.equal((await request(`/notes/cong-viec/${note.id}`, 'DELETE')).status, 200);
+  const deleted = (await request('/notes/trash')).body[0];
+  assert.equal(deleted.originalTopicSlug, 'cong-viec');
+  assert.equal(deleted.originalTopicName, 'Công việc');
+  assert.equal((await request(`/notes/trash/${note.id}/restore`, 'POST')).body.topicSlug, 'cong-viec');
+  assert.equal((await request('/notes/cong-viec')).body[0].id, note.id);
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'topics.json')), names);
+});
+
+test('moving back to unclassified creates its missing file and repeated saves never copy the note', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const note = (await request('/notes/hoc-tap', 'POST', { title: 'Chưa phân loại trở lại' })).body.note;
+  const unfiledPath = path.join(temporary, 'notes', '_unfiled.json');
+  assert.equal(await fs.pathExists(unfiledPath), false);
+  assert.equal((await request(`/notes/hoc-tap/${note.id}`, 'PUT', { topicSlug: 'hoc-tap' })).status, 200);
+  assert.equal((await request('/notes/hoc-tap')).body.length, 1);
+  const moved = await request(`/notes/hoc-tap/${note.id}`, 'PUT', { topicSlug: '' });
+  assert.equal(moved.status, 200);
+  assert.equal(moved.body.note.topicSlug, '');
+  assert.deepEqual((await request('/notes/hoc-tap')).body, []);
+  assert.equal((await fs.readJson(unfiledPath))[0].id, note.id);
+  assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug: '', content: '<p>Lưu lần hai</p>' })).status, 200);
+  assert.equal((await request('/notes')).body.length, 1);
+  assert.equal((await request('/notes/topics')).body.length, 1);
+});
+
+test('invalid destination slugs cannot move notes or write outside their public storage', async () => {
+  const note = (await request('/notes', 'POST', { title: 'Giữ nguyên' })).body;
+  const original = await fs.readJson(path.join(temporary, 'notes', '_unfiled.json'));
+  for (const topicSlug of [null, {}, [], 123, '../private', 'Học tập', 'ghi-chu', 'nhat-ky', 'a'.repeat(81)]) {
+    assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug, title: 'Không được lưu' })).status, 400);
+    assert.deepEqual(await fs.readJson(path.join(temporary, 'notes', '_unfiled.json')), original);
+  }
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['_unfiled.json']);
+  assert.equal(await fs.pathExists(path.join(temporary, 'private.json')), false);
+});
+
+test('a deleted or unknown destination is rejected without recreating a collection or changing the note', async () => {
+  await request('/notes/topics', 'POST', { name: 'Bộ sưu tập đã xóa' });
+  await request('/notes/topics/bo-suu-tap-da-xoa', 'DELETE');
+  const note = (await request('/notes', 'POST', { title: 'Giữ nguyên' })).body;
+  const before = (await request('/notes')).body;
+  for (const topicSlug of ['bo-suu-tap-da-xoa', 'khong-ton-tai']) {
+    assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug, title: 'Không được sửa' })).status, 404);
+    assert.deepEqual((await request('/notes')).body, before);
+  }
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['_unfiled.json']);
+});
+
+test('moving respects the source URL and public endpoints cannot relocate private notes', async () => {
+  for (const name of ['Học tập', 'Công việc']) await request('/notes/topics', 'POST', { name });
+  const publicNote = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú thường' })).body.note;
+  assert.equal((await request(`/notes/cong-viec/${publicNote.id}`, 'PUT', { topicSlug: '' })).status, 404);
+  assert.equal((await request('/notes/hoc-tap')).body[0].id, publicNote.id);
+  const token = await setup();
+  const privateNote = (await request('/private/notes', 'POST', { title: 'encrypted-title', content: 'encrypted-content' }, token)).body.note;
+  const before = await fs.readJson(path.join(temporary, 'private.json'));
+  assert.equal((await request(`/notes/${privateNote.id}`, 'PUT', { topicSlug: 'cong-viec' })).status, 404);
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'private.json')), before);
+  assert.deepEqual((await request('/notes/cong-viec')).body, []);
+});
+
+test('destination ID conflicts and malformed storage never overwrite the source or destination', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const note = (await request('/notes', 'POST', { title: 'Giữ bản nguồn' })).body;
+  const sourcePath = path.join(temporary, 'notes', '_unfiled.json');
+  const targetPath = path.join(temporary, 'notes', 'hoc-tap.json');
+  const original = await fs.readJson(sourcePath);
+  const conflict = [{ id: note.id, title: 'Bản đích có sẵn', content: 'Không ghi đè' }];
+  await fs.writeJson(targetPath, conflict);
+  assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug: 'hoc-tap' })).status, 409);
+  assert.deepEqual(await fs.readJson(sourcePath), original);
+  assert.deepEqual(await fs.readJson(targetPath), conflict);
+  for (const invalid of ['{invalid', '{}']) {
+    await fs.writeFile(targetPath, invalid);
+    assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug: 'hoc-tap' })).status, 500);
+    assert.deepEqual(await fs.readJson(sourcePath), original);
+    assert.equal(await fs.readFile(targetPath, 'utf8'), invalid);
+  }
+});
+
+test('failed destination writes leave both collections intact and clean temporary files', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const note = (await request('/notes', 'POST', { title: 'Giữ khi lỗi ghi đích' })).body;
+  const sourcePath = path.join(temporary, 'notes', '_unfiled.json');
+  const targetPath = path.join(temporary, 'notes', 'hoc-tap.json');
+  const original = await fs.readJson(sourcePath);
+  const originalRename = fs.rename;
+  fs.rename = async (source, destination, ...args) => {
+    if (destination === targetPath) throw Object.assign(new Error('Simulated move destination failure'), { code: 'EIO' });
+    return originalRename(source, destination, ...args);
+  };
+  try {
+    assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug: 'hoc-tap', title: 'Không lưu' })).status, 500);
+  } finally { fs.rename = originalRename; }
+  assert.deepEqual(await fs.readJson(sourcePath), original);
+  assert.deepEqual(await fs.readJson(targetPath), []);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['_unfiled.json', 'hoc-tap.json']);
+});
+
+test('failed source writes undo the destination copy including a newly created unclassified file', async () => {
+  for (const name of ['Học tập', 'Công việc']) await request('/notes/topics', 'POST', { name });
+  const note = (await request('/notes/hoc-tap', 'POST', { title: 'Giữ khi lỗi ghi nguồn' })).body.note;
+  await request('/notes/cong-viec', 'POST', { title: 'Giữ ghi chú khác ở đích' });
+  const sourcePath = path.join(temporary, 'notes', 'hoc-tap.json');
+  const targetPath = path.join(temporary, 'notes', 'cong-viec.json');
+  const original = await fs.readJson(sourcePath);
+  const targetBefore = await fs.readJson(targetPath);
+  const originalRename = fs.rename;
+  fs.rename = async (source, destination, ...args) => {
+    if (destination === sourcePath) throw Object.assign(new Error('Simulated move source failure'), { code: 'EIO' });
+    return originalRename(source, destination, ...args);
+  };
+  try {
+    for (const topicSlug of ['cong-viec', '']) {
+      assert.equal((await request(`/notes/hoc-tap/${note.id}`, 'PUT', { topicSlug, title: 'Không lưu' })).status, 500);
+      assert.deepEqual(await fs.readJson(sourcePath), original);
+      assert.deepEqual(await fs.readJson(targetPath), targetBefore);
+      assert.equal(await fs.pathExists(path.join(temporary, 'notes', '_unfiled.json')), false);
+    }
+  } finally { fs.rename = originalRename; }
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['cong-viec.json', 'hoc-tap.json']);
+});
+
+test('concurrent moves and partial edits retain one copy, both edits and all collection names', async () => {
+  for (const name of ['Học tập', 'Công việc']) await request('/notes/topics', 'POST', { name });
+  const note = (await request('/notes', 'POST', { title: 'Chuyển đồng thời', content: '<p>Giữ nội dung</p>' })).body;
+  const results = await Promise.all([
+    request(`/notes/${note.id}`, 'PUT', { topicSlug: 'hoc-tap', isPinned: true }),
+    request(`/notes/${note.id}`, 'PUT', { topicSlug: 'cong-viec', isFavorite: true }),
+  ]);
+  assert.deepEqual(results.map((result) => result.status), [200, 200]);
+  const allNotes = (await request('/notes')).body;
+  assert.equal(allNotes.length, 1);
+  assert.equal(allNotes[0].id, note.id);
+  assert.equal(allNotes[0].content, note.content);
+  assert.equal(allNotes[0].isPinned, true);
+  assert.equal(allNotes[0].isFavorite, true);
+  assert.ok(['hoc-tap', 'cong-viec'].includes(allNotes[0].topicSlug));
+  assert.equal((await request('/notes/topics')).body.length, 2);
+});
+
 test('profile/preferences persist partial edits; invalid input cannot overwrite saved settings', async () => {
   await request('/users/profile');
   const result = await request('/users/profile', 'PUT', { displayName: 'Anh Khoa', email: 'khoa@example.com', preferences: { theme: 'dark' } });
