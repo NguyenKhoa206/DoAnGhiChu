@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import noteService from '../../services/noteService';
 import { AppContext } from '../../context/AppContextBase';
@@ -14,6 +14,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const { user } = useContext(AppContext);
   const { preferences, updatePreferences } = useContext(AppContext);
   const [topics, setTopics] = useState([]);
+  const topicsRequestRef = useRef(0);
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
@@ -22,20 +23,24 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     let isCurrent = true;
+    const requestId = ++topicsRequestRef.current;
     const fetchTopics = async () => {
       if (!user) return;
       setLoadingTopics(true);
       try {
         const response = await noteService.getTopics();
-        if (isCurrent) setTopics(response.data || response || []);
+        if (isCurrent && requestId === topicsRequestRef.current) setTopics(response.data || response || []);
       } catch (error) {
         console.error('Không tải được bộ sưu tập ghi chú:', error);
       } finally {
-        if (isCurrent) setLoadingTopics(false);
+        if (isCurrent && requestId === topicsRequestRef.current) setLoadingTopics(false);
       }
     };
     fetchTopics();
-    return () => { isCurrent = false; };
+    return () => {
+      isCurrent = false;
+      topicsRequestRef.current += 1;
+    };
   }, [user]);
 
   const viewLink = (view, icon, label) => {
@@ -66,7 +71,16 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleTopicChanged = async ({ action, topicId, nextTopicId } = {}) => {
+  const handleTopicChanged = async ({ action, topicId, nextTopicId, topic } = {}) => {
+    const requestId = ++topicsRequestRef.current;
+    // Keep the saved Unicode name visible and invalidate reads from before
+    // the mutation, which may still contain the old slug-derived label.
+    setTopics((previous) => {
+      const remaining = previous.filter((item) => (item.id || item.slug) !== topicId
+        && (!topic || (item.id || item.slug) !== (topic.id || topic.slug)));
+      return topic ? [...remaining, topic] : remaining;
+    });
+    setLoadingTopics(false);
     const currentTopicPath = topicId ? `/notes/${topicId}` : '';
     let navigatedToChangedTopic = false;
     if (location.pathname === currentTopicPath) {
@@ -81,7 +95,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
     try {
       const response = await noteService.getTopics();
-      setTopics(response.data || response || []);
+      if (requestId === topicsRequestRef.current) setTopics(response.data || response || []);
     } catch (error) {
       console.error('Không làm mới được bộ sưu tập:', error);
     }

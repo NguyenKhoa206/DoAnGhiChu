@@ -57,6 +57,7 @@ const DashboardPage = () => {
   });
   const [noteDrafts, setNoteDrafts] = useState({});
   const searchInputRef = useRef(null);
+  const dataRequestRef = useRef(0);
 
   const requestedView = searchParams.get('view');
   const currentView = topicSlug ? 'topic' : (['today', 'favorites', 'pinned'].includes(requestedView) ? requestedView : 'all');
@@ -73,12 +74,14 @@ const DashboardPage = () => {
   }, []);
 
   const fetchDashboardData = useCallback(async () => {
+    const requestId = ++dataRequestRef.current;
     setLoading(true);
     try {
       const [notesResponse, topicsResponse] = await Promise.all([
         noteService.getAllNotes(topicSlug || null),
         noteService.getTopics(),
       ]);
+      if (requestId !== dataRequestRef.current) return;
       const nextNotes = notesResponse.data || notesResponse || [];
       setNotes(nextNotes);
       setTopics(topicsResponse.data || topicsResponse || []);
@@ -86,32 +89,21 @@ const DashboardPage = () => {
         nextNotes.some((note) => note.id === previous) ? previous : (nextNotes[0]?.id || null)
       ));
     } catch (error) {
-      showToast(error.response?.data?.message || 'Không tải được ghi chú. Hãy thử tải lại trang.', 'error');
+      if (requestId === dataRequestRef.current) {
+        showToast(error.response?.data?.message || 'Không tải được ghi chú. Hãy thử tải lại trang.', 'error');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === dataRequestRef.current) setLoading(false);
     }
   }, [showToast, topicSlug]);
 
   useEffect(() => {
-    let active = true;
-    Promise.all([
-      noteService.getAllNotes(topicSlug || null),
-      noteService.getTopics(),
-    ]).then(([notesResponse, topicsResponse]) => {
-      if (!active) return;
-      const nextNotes = notesResponse.data || notesResponse || [];
-      setNotes(nextNotes);
-      setTopics(topicsResponse.data || topicsResponse || []);
-      setSelectedNoteId((previous) => (
-        nextNotes.some((note) => note.id === previous) ? previous : (nextNotes[0]?.id || null)
-      ));
-    }).catch((error) => {
-      if (active) showToast(error.response?.data?.message || 'Không tải được ghi chú. Hãy thử tải lại trang.', 'error');
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, [showToast, topicSlug]);
+    const initialFetch = window.setTimeout(fetchDashboardData, 0);
+    return () => {
+      window.clearTimeout(initialFetch);
+      dataRequestRef.current += 1;
+    };
+  }, [fetchDashboardData]);
 
   useEffect(() => {
     const refreshNotes = () => { fetchDashboardData(); };

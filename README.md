@@ -360,7 +360,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `Brand.css` | Định dạng biểu tượng thương hiệu, tên HKT, chữ phụ và kích thước hiển thị trên các màn hình. |
 | `MainLayout.jsx` | Ghép sidebar, header, menu hồ sơ, trung tâm nhắc việc và Outlet; điều khiển menu trên màn hình nhỏ. |
 | `MainLayout.css` | Bố cục khung ứng dụng, header, vùng nội dung, sidebar overlay và điều chỉnh responsive. |
-| `Sidebar.jsx` | Điều hướng giữa các trang, lọc ghi chú, tải danh sách bộ sưu tập, mở TopicModal và chuyển giao diện sáng/tối. |
+| `Sidebar.jsx` | Điều hướng giữa các trang, lọc ghi chú, mở TopicModal và chuyển giao diện sáng/tối; giữ tên bộ sưu tập vừa lưu và bỏ kết quả tải danh sách cũ. |
 | `Sidebar.css` | Định dạng thanh điều hướng, mục đang chọn, danh sách bộ sưu tập và sidebar trên mobile. |
 
 #### Thành phần ghi chú — components/Notes
@@ -383,7 +383,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `NoteList.css` | Bố cục danh sách, thanh tìm kiếm, bảng/lưới, số lượng ghi chú và trạng thái danh sách rỗng. |
 | `ReminderCenter.jsx` | Tải lịch nhắc, kiểm tra việc đến hạn, xác nhận đã thông báo với backend, hiển thị Việc cần làm hôm nay và mở ghi chú liên quan. |
 | `ReminderCenter.css` | Định dạng nút chuông, số lượng nhắc việc, bảng thông báo, danh sách việc và giao diện mobile. |
-| `TopicModal.jsx` | Hộp tạo/đổi tên/xóa bộ sưu tập; kiểm tra tên, đọc giá trị nhập đã ghép dấu, chuẩn hóa NFC và giữ tên khi lưu lỗi. |
+| `TopicModal.jsx` | Hộp tạo/đổi tên/xóa bộ sưu tập; kiểm tra tên, chờ bộ gõ chốt dấu khi bấm lưu, chuẩn hóa NFC và giữ tên khi lưu lỗi. |
 | `TopicModal.css` | Định dạng hộp bộ sưu tập, ô tên, thông báo lỗi, nút lưu/xóa và trạng thái đang gửi yêu cầu. |
 
 #### Thành phần giao diện dùng chung — components/UI
@@ -417,7 +417,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `DashboardPage.jsx` | Trang ghi chú chính: danh sách/bộ sưu tập, tìm kiếm, lọc, bảng/lưới, tạo/sửa, nháp, ghim, yêu thích và xác nhận xóa. |
+| `DashboardPage.jsx` | Trang ghi chú chính: danh sách/bộ sưu tập, tìm kiếm, lọc, bảng/lưới, tạo/sửa, nháp, ghim, yêu thích và xác nhận xóa; bỏ phản hồi API cũ để giữ dữ liệu/tên mới. |
 | `DashboardPage.css` | Bố cục dashboard, thanh thao tác, thư mục/bộ sưu tập, bảng/lưới ghi chú và vùng xem tài liệu. |
 | `CalendarPage.jsx` | Hiển thị ghi chú thường theo ngày, chuyển tháng, xem ngày âm lịch và mở/sửa/xóa ghi chú từ lịch. |
 | `CalendarPage.css` | Định dạng lưới lịch, ngày đang chọn, ghi chú theo ngày và bố cục lịch responsive. |
@@ -714,13 +714,14 @@ Bản build frontend nằm tại `Note/frontend/dist/`. Có thể chạy `npm ru
 
 ### Kết quả đã ghi nhận ngày 10/10/2026
 
-Mốc mã nguồn đối chiếu: [206033c](https://github.com/NguyenKhoa206/DoAnGhiChu/commit/206033cdb503254eb809cf82b65d7c9dfe38fd76).
+Mốc kiểm thử ban đầu: [206033c](https://github.com/NguyenKhoa206/DoAnGhiChu/commit/206033cdb503254eb809cf82b65d7c9dfe38fd76). Trong đợt sửa bổ sung cùng ngày, các bộ test được chạy lại và thêm kiểm tra chốt dấu khi bấm lưu, phản hồi tải danh sách đến muộn, đổi tên, hủy thao tác và lỗi tải danh sách.
 
 | Nội dung | Kết quả đã ghi nhận |
 | --- | --- |
 | Backend unit/API | 49/49 test đạt |
-| Frontend unit | 26/25 test đạt |
-| Kiểm tra ô tên bộ sưu tập ở desktop/mobile trong đợt sửa gần nhất | 14/14 lượt đạt; sử dụng IME mô phỏng của Chromium |
+| Frontend unit | 26/26 test đạt |
+| Kiểm tra ô tên bộ sưu tập ở desktop/mobile | 14/14 lượt đạt; sử dụng IME mô phỏng của Chromium |
+| Kiểm tra chốt dấu khi bấm lưu và phản hồi tải cũ ở desktop/mobile | 12/12 lượt đạt; 6 kịch bản chạy trên 2 kích thước màn hình, có mô phỏng IME/mạng chậm |
 | Lint frontend | Đạt |
 | Build frontend | Đạt |
 
@@ -752,7 +753,7 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Khởi chạy | Tự chuẩn bị dữ liệu khi thiếu hồ sơ/notes; xử lý JSON trắng |
 | Nhập liệu | Chặn tiêu đề trống hoặc toàn khoảng trắng; kiểm tra tên bộ sưu tập |
 | Tiếng Việt | Bảo vệ quá trình ghép dấu trong editor và ô tên bộ sưu tập; chuẩn hóa Unicode khi lưu |
-| Bộ sưu tập | Giữ tên có dấu sau F5; đổi tên và khôi phục đúng; bổ sung nhãn Học/Ý tưởng cho dữ liệu cũ chưa lưu tên |
+| Bộ sưu tập | Chờ bộ gõ chốt dấu khi tạo/đổi tên; bỏ phản hồi tải cũ ghi đè tên mới; giữ tên sau F5, đổi tên và khôi phục đúng; bổ sung nhãn Học/Ý tưởng cho dữ liệu cũ chưa lưu tên |
 | Định dạng | Bật/tắt đậm, nghiêng, gạch chân, gạch ngang; xóa kiểu chữ đang chờ khi editor rỗng |
 | Hình ảnh | Tối ưu dung lượng, tránh dán trùng, giữ dữ liệu GIF và xử lý ảnh hỏng |
 | Tệp đính kèm | Gỡ cả tệp, chip/link và thông tin đi kèm bằng dấu × |
