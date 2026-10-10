@@ -35,6 +35,19 @@ const getUserNotesDir = () => path.join(getNotebookDir(), 'notes');
 const getUserTrashFilePath = () => path.join(getNotebookDir(), 'trash.json');
 const getUserPrivateFilePath = () => path.join(getNotebookDir(), 'private.json');
 const getUserPrivateTrashFilePath = () => path.join(getNotebookDir(), 'private-trash.json');
+const getTopicNamesPath = () => path.join(getNotebookDir(), 'topics.json');
+const readTopicNames = async () => {
+  const names = await readJsonFile(getTopicNamesPath());
+  if (names === null) return {};
+  if (typeof names !== 'object' || Array.isArray(names)) throw new Error('Tên bộ sưu tập phải là một đối tượng JSON.');
+  return names;
+};
+const topicNameOf = (slug, names) => {
+  if (Object.hasOwn(names, slug) && typeof names[slug] === 'string' && names[slug].trim()) return names[slug];
+  // Older notebooks only have a filename; retain access until the user supplies
+  // the original display name instead of guessing Vietnamese diacritics.
+  return slug.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
 const readArray = async (filePath) => {
   const data = await readJsonFile(filePath);
   if (data === null) return [];
@@ -78,14 +91,11 @@ const noteController = {
       if (!await fs.pathExists(notesDir)) return res.status(200).json([]);
       const files = await fs.readdir(notesDir);
       const jsonFiles = files.filter((f) => f.endsWith('.json') && f !== UNFILED_FILE);
+      const names = await readTopicNames();
 
       const topics = jsonFiles.map((fileName) => {
         const slug = fileName.replace('.json', '');
-        // Biến đổi slug thành tên đẹp hiển thị (Ví dụ: hoc-tap -> Hoc tap)
-        const name = slug
-          .split('-')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
+        const name = topicNameOf(slug, names);
 
         return { id: slug, slug, name, fileName };
       });
@@ -104,7 +114,7 @@ const noteController = {
   createTopic: async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { name } = req.body;
+      const name = typeof req.body.name === 'string' ? req.body.name.normalize('NFC').trim() : '';
 
       if (typeof name !== 'string' || !name.trim() || name.trim().length > 80) {
         return res.status(400).json({ message: 'Tên chủ đề không được để trống.' });
@@ -120,13 +130,20 @@ const noteController = {
       if (await fs.pathExists(filePath)) {
         return res.status(400).json({ message: 'Chủ đề này đã tồn tại.' });
       }
+      const names = await readTopicNames();
 
       // Khởi tạo file json chủ đề mới chứa mảng rỗng []
       await writeJsonFile(filePath, []);
+      try {
+        await writeJsonFile(getTopicNamesPath(), { ...names, [slug]: name });
+      } catch (writeError) {
+        await fs.remove(filePath);
+        throw writeError;
+      }
 
       return res.status(201).json({
         message: 'Tạo chủ đề mới thành công.',
-        topic: { id: slug, slug, name: name.trim() },
+        topic: { id: slug, slug, name },
       });
     } catch (error) {
       console.error('Lỗi khi tạo chủ đề mới:', error);
@@ -152,11 +169,13 @@ const noteController = {
       }
 
       const notesInTopic = await readArray(filePath);
+      const names = await readTopicNames();
+      const topicName = topicNameOf(topicId, names);
       if (notesInTopic.length) {
         const trashPath = getUserTrashFilePath(userId);
         const trash = await readArray(trashPath);
         const deletedAt = new Date().toISOString();
-        trash.unshift(...notesInTopic.map((note) => ({ ...note, originalTopicSlug: topicId, deletedAt })));
+        trash.unshift(...notesInTopic.map((note) => ({ ...note, originalTopicSlug: topicId, originalTopicName: topicName, deletedAt })));
         await writeJsonFile(trashPath, trash);
       }
       await fs.remove(filePath);
@@ -171,18 +190,36 @@ const noteController = {
     try {
       const userId = req.user.userId;
       const oldSlug = req.params.topicId;
-      const name = String(req.body.name || '').trim();
+      const name = typeof req.body.name === 'string' ? req.body.name.normalize('NFC').trim() : '';
       if (!name) return res.status(400).json({ message: 'Tên chủ đề không được để trống.' });
       if (name.length > 80 || !isTopicSlug(oldSlug)) return res.status(400).json({ message: 'Tên hoặc mã chủ đề không hợp lệ.' });
       const newSlug = slugify(name);
-      if (!newSlug) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
+      if (!isTopicSlug(newSlug)) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
       if (['ghi-chu', 'nhat-ky'].includes(newSlug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
       const notesDir = getUserNotesDir(userId);
       const oldPath = path.join(notesDir, `${oldSlug}.json`);
       const newPath = path.join(notesDir, `${newSlug}.json`);
       if (!await fs.pathExists(oldPath)) return res.status(404).json({ message: 'Chủ đề không tồn tại.' });
       if (newSlug !== oldSlug && await fs.pathExists(newPath)) return res.status(409).json({ message: 'Đã có chủ đề cùng tên.' });
-      await fs.move(oldPath, newPath);
+      const names = await readTopicNames();
+      const nextNames = { ...names, [newSlug]: name };
+      if (newSlug !== oldSlug) delete nextNames[oldSlug];
+      const trashPath = getUserTrashFilePath(userId);
+      const trash = await readArray(trashPath);
+      const nextTrash = trash.map((note) => note.originalTopicSlug === oldSlug
+        ? { ...note, originalTopicSlug: newSlug, originalTopicName: name }
+        : note);
+      if (newSlug !== oldSlug) await fs.move(oldPath, newPath);
+      let namesWritten = false;
+      try {
+        await writeJsonFile(getTopicNamesPath(), nextNames);
+        namesWritten = true;
+        if (nextTrash.some((note, index) => note !== trash[index])) await writeJsonFile(trashPath, nextTrash);
+      } catch (writeError) {
+        if (newSlug !== oldSlug) await fs.move(newPath, oldPath);
+        if (namesWritten) await writeJsonFile(getTopicNamesPath(), names);
+        throw writeError;
+      }
       return res.status(200).json({ message: 'Đã đổi tên chủ đề.', topic: { id: newSlug, slug: newSlug, name } });
     } catch (error) {
       console.error('Lỗi đổi tên chủ đề:', error);
@@ -390,6 +427,7 @@ const noteController = {
       }
       const files = await fs.readdir(notesDir);
       const jsonFiles = files.filter((f) => f.endsWith('.json') && (topic === undefined || f === fileOfTopic(topic)));
+      const names = await readTopicNames();
 
       let deletedNote = null;
       let activeFilePath = null;
@@ -401,7 +439,8 @@ const noteController = {
 
         const note = notes.find((item) => item.id === noteId);
         if (note) {
-          deletedNote = { ...note, originalTopicSlug: topicOfFile(fileName), deletedAt: new Date().toISOString() };
+          const originalTopicSlug = topicOfFile(fileName);
+          deletedNote = { ...note, originalTopicSlug, ...(originalTopicSlug ? { originalTopicName: topicNameOf(originalTopicSlug, names) } : {}), deletedAt: new Date().toISOString() };
           activeFilePath = filePath;
           remainingNotes = notes.filter((item) => item.id !== noteId);
           break;
@@ -432,7 +471,11 @@ const noteController = {
 
   getTrash: async (req, res) => {
     try {
-      return res.status(200).json(await readArray(getUserTrashFilePath(req.user.userId)));
+      const names = await readTopicNames();
+      const trash = await readArray(getUserTrashFilePath(req.user.userId));
+      return res.status(200).json(trash.map((note) => note.originalTopicSlug
+        ? { ...note, originalTopicName: note.originalTopicName || topicNameOf(note.originalTopicSlug, names) }
+        : note));
     } catch (error) {
       console.error('Lỗi lấy thùng rác:', error);
       return res.status(500).json({ message: 'Không thể tải thùng rác.' });
@@ -453,7 +496,11 @@ const noteController = {
       await fs.ensureDir(notesDir);
       const targetPath = path.join(notesDir, targetFile);
       const targetNotes = await readArray(targetPath);
-      const { deletedAt, originalTopicSlug, ...restoredNote } = note;
+      const { deletedAt, originalTopicSlug, originalTopicName, ...restoredNote } = note;
+      if (targetSlug && originalTopicName && !await fs.pathExists(targetPath)) {
+        const names = await readTopicNames();
+        await writeJsonFile(getTopicNamesPath(), { ...names, [targetSlug]: originalTopicName });
+      }
       targetNotes.unshift(restoredNote);
       await writeJsonFile(targetPath, targetNotes);
       await writeJsonFile(trashPath, trash);

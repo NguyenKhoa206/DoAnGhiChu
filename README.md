@@ -5,6 +5,7 @@
 ## Chức năng
 
 - Tạo, đọc, sửa, xóa ghi chú; phân loại theo chủ đề; tìm kiếm, ghim và yêu thích.
+- Tên bộ sưu tập giữ nguyên dấu tiếng Việt và cách viết sau khi tạo, đổi tên hoặc tải lại trang. Tên hiển thị được lưu riêng với mã dùng trong URL/tên file. Bộ sưu tập cũ chỉ còn tên file không dấu cần đổi tên có dấu một lần.
 - Soạn thảo có định dạng chữ, danh sách, checklist, hình ảnh, công cụ chỉnh ảnh và tệp đính kèm. Có nút × để gỡ ảnh/tệp.
 - Xuất ghi chú sang **TXT UTF-8** hoặc **Word DOCX**. File Word là định dạng Office thực, không phải HTML đổi đuôi thành DOC.
 - Lịch ghi chú, thùng rác, khôi phục và xóa vĩnh viễn.
@@ -105,6 +106,7 @@ Backend sử dụng `Note/server/data/` mặc định:
 | Đường dẫn | Nội dung |
 | --- | --- |
 | `profile.json` | Hồ sơ, cài đặt và hash mật khẩu riêng tư. |
+| `topics.json` | Tên hiển thị đầy đủ dấu của các bộ sưu tập, theo mã chủ đề. Cần giữ file này khi sao lưu dữ liệu. |
 | `notes/<chu-de>.json` | Danh sách ghi chú của từng chủ đề. |
 | `notes/_unfiled.json` | Ghi chú chưa phân loại; không xuất hiện như bộ sưu tập. |
 | `private.json` | Ghi chú riêng tư đã mã hóa. |

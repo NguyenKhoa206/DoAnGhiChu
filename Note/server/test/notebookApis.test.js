@@ -36,6 +36,188 @@ const setup = async () => {
   return result.body.privateToken;
 };
 
+test('collection names retain Vietnamese, capitalization and NFC separately from file slugs', async () => {
+  const created = await request('/notes/topics', 'POST', { name: '  Học tập và Ý tưởng  ' });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.topic.name, 'Học tập và Ý tưởng');
+  assert.equal(created.body.topic.slug, 'hoc-tap-va-y-tuong');
+  assert.deepEqual((await request('/notes/topics')).body, [{
+    id: 'hoc-tap-va-y-tuong', slug: 'hoc-tap-va-y-tuong', name: 'Học tập và Ý tưởng', fileName: 'hoc-tap-va-y-tuong.json',
+  }]);
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'topics.json')), { 'hoc-tap-va-y-tuong': 'Học tập và Ý tưởng' });
+  assert.deepEqual((await request('/notes')).body, []);
+});
+
+test('collection display names survive a new backend process', async () => {
+  assert.equal((await request('/notes/topics', 'POST', { name: 'Đồ án phần mềm' })).status, 201);
+  const child = spawnSync(process.execPath, ['-e', `
+    (async () => {
+      const app = require('./server');
+      const server = app.listen(0, '127.0.0.1');
+      await new Promise(resolve => server.once('listening', resolve));
+      const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/notes/topics');
+      if (!response.ok) throw new Error('Could not load collections after restart');
+      process.stdout.write('TOPICS_JSON:' + JSON.stringify(await response.json()));
+      await new Promise(resolve => server.close(resolve));
+    })().catch(error => { console.error(error); process.exitCode = 1; });
+  `], { cwd: path.join(__dirname, '..'), env: process.env, encoding: 'utf8', timeout: 10000 });
+  assert.equal(child.status, 0, child.stderr);
+  const topics = JSON.parse(child.stdout.split('TOPICS_JSON:')[1]);
+  assert.equal(topics[0].name, 'Đồ án phần mềm');
+});
+
+test('adding diacritics to an existing collection name keeps its notes and filename', async () => {
+  await request('/notes/topics', 'POST', { name: 'Hoc tap' });
+  const saved = (await request('/notes/hoc-tap', 'POST', { title: 'Bài học', content: '<p>Giữ đủ dấu</p>' })).body.note;
+  const changed = await request('/notes/topics/hoc-tap', 'PUT', { name: 'Học tập' });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.topic.slug, 'hoc-tap');
+  assert.equal((await request('/notes/topics')).body[0].name, 'Học tập');
+  assert.deepEqual((await request('/notes/hoc-tap')).body, [{ ...saved, topicSlug: 'hoc-tap' }]);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['hoc-tap.json']);
+});
+
+test('renaming a collection moves active notes and trash references while preserving Vietnamese names', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const active = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú đang dùng' })).body.note;
+  const deleted = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú đã xóa' })).body.note;
+  await request(`/notes/hoc-tap/${deleted.id}`, 'DELETE');
+  assert.equal((await request('/notes/trash')).body[0].originalTopicName, 'Học tập');
+  const changed = await request('/notes/topics/hoc-tap', 'PUT', { name: 'Đồ án tốt nghiệp' });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.topic.slug, 'do-an-tot-nghiep');
+  assert.deepEqual((await request('/notes/hoc-tap')).body, []);
+  assert.equal((await request('/notes/do-an-tot-nghiep')).body[0].id, active.id);
+  const trashNote = (await request('/notes/trash')).body[0];
+  assert.equal(trashNote.originalTopicSlug, 'do-an-tot-nghiep');
+  assert.equal(trashNote.originalTopicName, 'Đồ án tốt nghiệp');
+  assert.equal((await request(`/notes/trash/${deleted.id}/restore`, 'POST')).body.topicSlug, 'do-an-tot-nghiep');
+  assert.equal((await request('/notes/do-an-tot-nghiep')).body.length, 2);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['do-an-tot-nghiep.json']);
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'topics.json')), { 'do-an-tot-nghiep': 'Đồ án tốt nghiệp' });
+});
+
+test('legacy collections remain accessible without a display-name file and can be repaired by renaming', async () => {
+  await fs.outputJson(path.join(temporary, 'notes', 'cong-viec.json'), [{ id: 'legacy-note', title: 'Ghi chú cũ' }]);
+  for (const empty of [null, '', '   ', '{}']) {
+    const namesPath = path.join(temporary, 'topics.json');
+    if (empty === null) await fs.remove(namesPath);
+    else await fs.outputFile(namesPath, empty);
+    const topics = await request('/notes/topics');
+    assert.equal(topics.status, 200);
+    assert.equal(topics.body[0].slug, 'cong-viec');
+    assert.equal((await request('/notes/cong-viec')).body[0].id, 'legacy-note');
+  }
+  assert.equal((await request('/notes/topics/cong-viec', 'PUT', { name: 'Công việc' })).status, 200);
+  assert.equal((await request('/notes/topics')).body[0].name, 'Công việc');
+  assert.equal((await request('/notes/cong-viec')).body[0].id, 'legacy-note');
+});
+
+test('concurrent collection creation and renaming retain every persisted display name', async () => {
+  const created = await Promise.all(['Học tập', 'Công việc', 'Ý tưởng'].map(name => request('/notes/topics', 'POST', { name })));
+  assert(created.every(result => result.status === 201));
+  const renamed = await Promise.all([
+    request('/notes/topics/hoc-tap', 'PUT', { name: 'Học tập nâng cao' }),
+    request('/notes/topics/cong-viec', 'PUT', { name: 'CÔNG VIỆC' }),
+  ]);
+  assert(renamed.every(result => result.status === 200));
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'topics.json')), {
+    'hoc-tap-nang-cao': 'Học tập nâng cao', 'cong-viec': 'CÔNG VIỆC', 'y-tuong': 'Ý tưởng',
+  });
+  assert.equal((await request('/notes/topics')).body.length, 3);
+});
+
+test('invalid collection names cannot create files or overwrite persisted names', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const namesPath = path.join(temporary, 'topics.json');
+  const beforeNames = await fs.readFile(namesPath, 'utf8');
+  for (const name of ['', ' \t\n\u00a0 ', {}, [], 12, null, 'A'.repeat(81), '--', 'Ghi chú', 'Nhật ký']) {
+    assert.equal((await request('/notes/topics', 'POST', { name })).status, 400);
+    assert.equal((await request('/notes/topics/hoc-tap', 'PUT', { name })).status, 400);
+  }
+  assert.equal(await fs.readFile(namesPath, 'utf8'), beforeNames);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['hoc-tap.json']);
+});
+
+test('collection slug collisions do not overwrite either collection or its accented name', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  await request('/notes/topics', 'POST', { name: 'Công việc' });
+  assert.equal((await request('/notes/topics', 'POST', { name: 'Hoc tap' })).status, 400);
+  assert.equal((await request('/notes/topics/cong-viec', 'PUT', { name: 'Học tập' })).status, 409);
+  assert.deepEqual(await fs.readJson(path.join(temporary, 'topics.json')), { 'hoc-tap': 'Học tập', 'cong-viec': 'Công việc' });
+  assert.equal((await request('/notes/topics')).body.length, 2);
+});
+
+test('restoring a deleted collection retains its display name from trash', async () => {
+  await request('/notes/topics', 'POST', { name: 'Ý tưởng sáng tạo' });
+  const saved = (await request('/notes/y-tuong-sang-tao', 'POST', { title: 'Ghi chú cần khôi phục' })).body.note;
+  assert.equal((await request('/notes/topics/y-tuong-sang-tao', 'DELETE')).status, 200);
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  await fs.remove(path.join(temporary, 'topics.json'));
+  assert.equal((await request('/notes/trash')).body[0].originalTopicName, 'Ý tưởng sáng tạo');
+  assert.equal((await request(`/notes/trash/${saved.id}/restore`, 'POST')).status, 200);
+  assert.equal((await request('/notes/topics')).body[0].name, 'Ý tưởng sáng tạo');
+  assert.equal((await request('/notes/y-tuong-sang-tao')).body[0].id, saved.id);
+});
+
+test('malformed display-name storage is reported without overwriting it or moving collection files', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const namesPath = path.join(temporary, 'topics.json');
+  for (const invalid of ['{invalid', '[]', '42']) {
+    await fs.writeFile(namesPath, invalid);
+    assert.equal((await request('/notes/topics', 'POST', { name: 'Công việc' })).status, 500);
+    assert.equal((await request('/notes/topics/hoc-tap', 'PUT', { name: 'Ý tưởng' })).status, 500);
+    assert.equal(await fs.readFile(namesPath, 'utf8'), invalid);
+    assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['hoc-tap.json']);
+  }
+});
+
+test('failed display-name writes do not leave empty collections or move existing notes', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const saved = (await request('/notes/hoc-tap', 'POST', { title: 'Giữ nguyên ghi chú' })).body.note;
+  const namesPath = path.join(temporary, 'topics.json');
+  const originalNames = await fs.readFile(namesPath, 'utf8');
+  const originalRename = fs.rename;
+  fs.rename = async (source, destination, ...args) => {
+    if (destination === namesPath) throw Object.assign(new Error('Simulated display-name write failure'), { code: 'EIO' });
+    return originalRename(source, destination, ...args);
+  };
+  try {
+    assert.equal((await request('/notes/topics', 'POST', { name: 'Công việc' })).status, 500);
+    assert.equal((await request('/notes/topics/hoc-tap', 'PUT', { name: 'Ý tưởng' })).status, 500);
+  } finally {
+    fs.rename = originalRename;
+  }
+  assert.equal(await fs.readFile(namesPath, 'utf8'), originalNames);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['hoc-tap.json']);
+  assert.deepEqual((await request('/notes/hoc-tap')).body, [{ ...saved, topicSlug: 'hoc-tap' }]);
+});
+
+test('failed trash writes during renaming roll back both the collection filename and display name', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const saved = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú trong thùng rác' })).body.note;
+  await request(`/notes/hoc-tap/${saved.id}`, 'DELETE');
+  const namesPath = path.join(temporary, 'topics.json');
+  const trashPath = path.join(temporary, 'trash.json');
+  const originalNames = await fs.readFile(namesPath, 'utf8');
+  const originalTrash = await fs.readFile(trashPath, 'utf8');
+  const originalRename = fs.rename;
+  fs.rename = async (source, destination, ...args) => {
+    if (destination === trashPath) throw Object.assign(new Error('Simulated trash write failure'), { code: 'EIO' });
+    return originalRename(source, destination, ...args);
+  };
+  try {
+    assert.equal((await request('/notes/topics/hoc-tap', 'PUT', { name: 'Đồ án' })).status, 500);
+  } finally {
+    fs.rename = originalRename;
+  }
+  assert.equal(await fs.readFile(namesPath, 'utf8'), originalNames);
+  assert.equal(await fs.readFile(trashPath, 'utf8'), originalTrash);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['hoc-tap.json']);
+  assert.equal((await request('/notes/topics')).body[0].name, 'Học tập');
+  assert.equal((await request(`/notes/trash/${saved.id}/restore`, 'POST')).body.topicSlug, 'hoc-tap');
+});
+
 test('creating an unclassified note never creates a collection and trash restore keeps it unclassified', async () => {
   const saved = await request('/notes', 'POST', { title: 'Ghi chú độc lập', content: '<p>Không tạo thư mục</p>' });
   assert.equal(saved.status, 201);

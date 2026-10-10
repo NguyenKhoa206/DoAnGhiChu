@@ -74,7 +74,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         navigate('/dashboard', { replace: true });
         navigatedToChangedTopic = true;
       }
-      if (action === 'rename' && nextTopicId) {
+      if (action === 'rename' && nextTopicId && nextTopicId !== topicId) {
         navigate(`/notes/${nextTopicId}`, { replace: true });
         navigatedToChangedTopic = true;
       }
