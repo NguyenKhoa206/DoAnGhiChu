@@ -179,42 +179,423 @@ Nếu thay đổi địa chỉ hoặc cổng backend, cập nhật biến này v
 
 Trong development, nếu chưa đặt `JWT_SECRET`, ứng dụng tạo khóa mặc định ổn định để dùng qua các lần khởi động. Khi cấu hình production, thay giá trị mẫu bằng khóa bí mật riêng đáp ứng giới hạn trên.
 
-## 9. Cấu trúc thư mục
+## 9. Cấu trúc thư mục và vai trò từng file
 
-Các đường dẫn dưới đây được tính từ thư mục gốc **DoAnGhiChu**.
+### 9.1. Cây thư mục mã nguồn trên nhánh main
 
-| Đường dẫn | Nội dung / vai trò |
+Cây dưới đây liệt kê đầy đủ **107 file đang được Git quản lý**, tính từ thư mục gốc `DoAnGhiChu`. Dữ liệu tạo lúc chạy được mô tả riêng ở mục 9.4.
+
+**Tên thư mục theo source trên GitHub:** `frontend` và `server` viết thường. Trên môi trường phân biệt chữ hoa/thường, dùng `cd Note/frontend` và `cd Note/server`.
+
+```text
+DoAnGhiChu/
+├── Note/  # Mã nguồn ứng dụng
+│   ├── frontend/  # Giao diện React + Vite
+│   │   ├── public/  # Tài nguyên tĩnh
+│   │   │   └── favicon.svg
+│   │   ├── src/  # Mã nguồn frontend
+│   │   │   ├── components/  # Thành phần giao diện tái sử dụng
+│   │   │   │   ├── Layouts/  # Khung ứng dụng và điều hướng
+│   │   │   │   │   ├── Brand.css
+│   │   │   │   │   ├── Brand.jsx
+│   │   │   │   │   ├── MainLayout.css
+│   │   │   │   │   ├── MainLayout.jsx
+│   │   │   │   │   ├── Sidebar.css
+│   │   │   │   │   └── Sidebar.jsx
+│   │   │   │   ├── Notes/  # Soạn thảo và quản lý ghi chú
+│   │   │   │   │   ├── DocumentDetailView.css
+│   │   │   │   │   ├── DocumentDetailView.jsx
+│   │   │   │   │   ├── ExportNoteButton.css
+│   │   │   │   │   ├── ExportNoteButton.jsx
+│   │   │   │   │   ├── NoteCard.css
+│   │   │   │   │   ├── NoteCard.jsx
+│   │   │   │   │   ├── NoteFormattingTools.css
+│   │   │   │   │   ├── NoteFormattingTools.jsx
+│   │   │   │   │   ├── NoteImageTools.css
+│   │   │   │   │   ├── NoteImageTools.jsx
+│   │   │   │   │   ├── NoteList.css
+│   │   │   │   │   ├── NoteList.jsx
+│   │   │   │   │   ├── ReminderCenter.css
+│   │   │   │   │   ├── ReminderCenter.jsx
+│   │   │   │   │   ├── TopicModal.css
+│   │   │   │   │   └── TopicModal.jsx
+│   │   │   │   ├── UI/  # Điều khiển giao diện dùng chung
+│   │   │   │   │   ├── ConfirmDialog.css
+│   │   │   │   │   ├── ConfirmDialog.jsx
+│   │   │   │   │   ├── Icon.jsx
+│   │   │   │   │   ├── PasswordInput.css
+│   │   │   │   │   ├── PasswordInput.jsx
+│   │   │   │   │   ├── PrivateAuthModal.css
+│   │   │   │   │   ├── PrivateAuthModal.jsx
+│   │   │   │   │   ├── Toast.css
+│   │   │   │   │   └── Toast.jsx
+│   │   │   │   └── User/  # Menu hồ sơ
+│   │   │   │       ├── ProfileMenu.css
+│   │   │   │       └── ProfileMenu.jsx
+│   │   │   ├── context/  # Trạng thái dùng chung
+│   │   │   │   ├── AppContext.jsx
+│   │   │   │   └── AppContextBase.js
+│   │   │   ├── pages/  # Các trang ứng dụng
+│   │   │   │   ├── CalendarPage.css
+│   │   │   │   ├── CalendarPage.jsx
+│   │   │   │   ├── DashboardPage.css
+│   │   │   │   ├── DashboardPage.jsx
+│   │   │   │   ├── NotFoundPage.css
+│   │   │   │   ├── NotFoundPage.jsx
+│   │   │   │   ├── PrivateNotePage.css
+│   │   │   │   ├── PrivateNotePage.jsx
+│   │   │   │   ├── SettingsPage.css
+│   │   │   │   ├── SettingsPage.jsx
+│   │   │   │   ├── TrashPage.css
+│   │   │   │   └── TrashPage.jsx
+│   │   │   ├── services/  # Kết nối API
+│   │   │   │   ├── api.js
+│   │   │   │   ├── noteService.js
+│   │   │   │   ├── privateService.js
+│   │   │   │   └── userService.js
+│   │   │   ├── styles/  # CSS toàn cục
+│   │   │   │   └── global.css
+│   │   │   ├── utils/  # Hàm hỗ trợ frontend
+│   │   │   │   ├── crypto.js
+│   │   │   │   ├── formatters.js
+│   │   │   │   ├── noteAppearance.js
+│   │   │   │   ├── noteExport.js
+│   │   │   │   ├── noteFiles.js
+│   │   │   │   ├── noteImages.js
+│   │   │   │   ├── noteReminders.js
+│   │   │   │   ├── noteRichText.js
+│   │   │   │   ├── vietnameseLunar.js
+│   │   │   │   └── wordPackage.js
+│   │   │   ├── App.jsx
+│   │   │   ├── index.css
+│   │   │   └── main.jsx
+│   │   ├── test/  # Kiểm thử frontend
+│   │   │   ├── noteExport.test.js
+│   │   │   ├── noteFiles.test.js
+│   │   │   ├── noteImages.test.js
+│   │   │   ├── noteReminders.test.js
+│   │   │   └── privateCrypto.test.js
+│   │   ├── .env.example
+│   │   ├── .oxlintrc.json
+│   │   ├── index.html
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── playwright.config.js
+│   │   └── vite.config.js
+│   └── server/  # Backend Node.js + Express
+│       ├── config/  # Cấu hình xác thực riêng tư
+│       │   └── jwt.js
+│       ├── controllers/  # Xử lý nghiệp vụ API
+│       │   ├── authController.js
+│       │   ├── noteController.js
+│       │   ├── reminderController.js
+│       │   └── userController.js
+│       ├── middleware/  # Xử lý request và lỗi
+│       │   ├── errorHandler.js
+│       │   ├── notebookMiddleware.js
+│       │   └── privateAuthMiddleware.js
+│       ├── routes/  # Định tuyến API
+│       │   ├── authRoutes.js
+│       │   ├── noteRoutes.js
+│       │   ├── privateRoutes.js
+│       │   └── userRoutes.js
+│       ├── test/  # Kiểm thử backend
+│       │   ├── notebookApis.test.js
+│       │   └── security.test.js
+│       ├── utils/  # Hàm hỗ trợ backend và lưu trữ
+│       │   ├── noteBackground.js
+│       │   ├── notebookMutation.js
+│       │   ├── notebookStorage.js
+│       │   ├── noteContent.js
+│       │   ├── noteReminder.js
+│       │   ├── privateAccess.js
+│       │   ├── privateAttempts.js
+│       │   ├── read_write.js
+│       │   └── uiPreferences.js
+│       ├── .env.example
+│       ├── package-lock.json
+│       ├── package.json
+│       └── server.js
+├── .gitignore
+└── README.md
+```
+
+### 9.2. Vai trò từng file ở thư mục gốc
+
+| File | Tác dụng |
 | --- | --- |
-| `README.md` | Giới thiệu đồ án, phân công, cài đặt và hướng dẫn sử dụng |
-| `Note/frontend/` | Mã nguồn giao diện React |
-| `Note/frontend/public/` | Tài nguyên tĩnh của frontend |
-| `Note/frontend/src/main.jsx` | Khởi tạo ứng dụng React |
-| `Note/frontend/src/App.jsx` | Định nghĩa các trang và điều hướng |
-| `Note/frontend/src/components/Layouts/` | Khung giao diện, sidebar và thương hiệu HKT |
-| `Note/frontend/src/components/Notes/` | Trình soạn thảo, định dạng, ảnh, bộ sưu tập, xuất file và nhắc việc |
-| `Note/frontend/src/components/UI/` | Icon, thông báo, hộp xác nhận và hộp mở khóa riêng tư |
-| `Note/frontend/src/components/User/` | Menu hồ sơ cá nhân |
-| `Note/frontend/src/pages/` | Dashboard, lịch, vùng riêng tư, cài đặt, thùng rác và trang 404 |
-| `Note/frontend/src/context/` | Trạng thái hồ sơ, tùy chọn giao diện và quá trình mở ứng dụng |
-| `Note/frontend/src/services/` | Gọi API ghi chú, hồ sơ và mật khẩu riêng tư |
-| `Note/frontend/src/utils/` | Mã hóa, ảnh, tệp đính kèm, xuất DOCX/TXT và xử lý lịch |
-| `Note/frontend/src/styles/` | Style và biến giao diện dùng chung |
-| `Note/frontend/test/` | Các test frontend |
-| `Note/frontend/package.json` | Phụ thuộc và các lệnh chạy frontend |
-| `Note/frontend/package-lock.json` | Phiên bản phụ thuộc dùng khi cài bằng npm ci |
-| `Note/frontend/.env.example` | Cấu hình API mẫu |
-| `Note/server/` | Mã nguồn backend Node.js |
-| `Note/server/server.js` | Khởi tạo Express, middleware và API |
-| `Note/server/config/` | Cấu hình JWT |
-| `Note/server/routes/` | Các đường dẫn API |
-| `Note/server/controllers/` | Xử lý ghi chú, nhắc việc, hồ sơ và mật khẩu riêng tư |
-| `Note/server/middleware/` | Chuẩn bị sổ tay, kiểm tra phiên riêng tư và xử lý lỗi |
-| `Note/server/utils/` | Đọc/ghi JSON, chuyển dữ liệu, quản lý khóa và lọc nội dung |
-| `Note/server/test/` | Các test backend/API và bảo mật |
-| `Note/server/data/` | Dữ liệu trên máy chạy backend; được chuẩn bị khi cần |
-| `Note/server/package.json` | Phụ thuộc và các lệnh chạy backend |
-| `Note/server/package-lock.json` | Phiên bản phụ thuộc dùng khi cài bằng npm ci |
-| `Note/server/.env.example` | Cấu hình backend mẫu |
+| `.gitignore` | Quy định các tệp Git bỏ qua: thư viện cài bằng npm, bản build, cấu hình riêng, dữ liệu sổ tay và kết quả kiểm thử. |
+| `README.md` | Tài liệu giới thiệu đồ án HKT, thành viên, chức năng, cài đặt, cấu trúc mã nguồn, API, kiểm thử và hướng dẫn bàn giao. |
+
+### 9.3. Vai trò từng file mã nguồn
+
+Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` định dạng thành phần tương ứng; `.js` chứa cấu hình, kết nối API, nghiệp vụ, tiện ích hoặc kiểm thử. Mỗi bảng ghi rõ thư mục gốc để xác định đúng file.
+
+#### Cấu hình, tài nguyên tĩnh và điểm khởi chạy frontend
+
+Đường dẫn gốc của bảng: `Note/frontend/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `.env.example` | Mẫu biến VITE_API_BASE_URL để frontend biết địa chỉ API backend. Sao chép thành .env nếu cần cấu hình riêng. |
+| `.oxlintrc.json` | Cấu hình Oxlint, bật quy tắc React Hooks và kiểm tra cách export component để phát hiện lỗi mã frontend. |
+| `index.html` | Trang HTML gốc: khai báo tiếng Việt, UTF-8, favicon, viewport, vùng root và đường dẫn nạp main.jsx. |
+| `package.json` | Khai báo React, Vite, Axios, React Router và các lệnh dev, build, preview, lint, test, test:e2e. |
+| `package-lock.json` | Khóa phiên bản phụ thuộc và thông tin cài đặt; giúp npm ci tái lập đúng bộ thư viện đã chốt. |
+| `playwright.config.js` | Cấu hình kiểm thử trình duyệt desktop/mobile, khởi chạy frontend và backend với dữ liệu tạm. Tình trạng sử dụng được ghi bên dưới. |
+| `vite.config.js` | Cấu hình Vite và plugin React để chạy máy chủ phát triển, xử lý JSX và tạo bản build frontend. |
+| `public/favicon.svg` | Biểu tượng SVG được index.html dùng làm icon trên tab trình duyệt. |
+| `src/main.jsx` | Điểm vào JavaScript: tạo React root, nạp CSS và render App trong React.StrictMode. |
+| `src/App.jsx` | Ghép AppProvider và BrowserRouter, khai báo các route, xử lý trạng thái mở sổ tay và chuyển đường dẫn gốc/đăng nhập cũ về dashboard. |
+| `src/index.css` | Nạp styles/global.css và đặt kích thước, nền, màu chữ, bố cục cho root của ứng dụng. |
+| `src/styles/global.css` | Định nghĩa biến giao diện sáng/tối, reset CSS, typography, nút, biểu mẫu, modal, thanh cuộn và mật độ hiển thị dùng chung. |
+
+#### Khung giao diện — components/Layouts
+
+Đường dẫn gốc của bảng: `Note/frontend/src/components/Layouts/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `Brand.jsx` | Hiển thị thương hiệu HKT, dòng Sổ tay của bạn và liên kết quay về dashboard. |
+| `Brand.css` | Định dạng biểu tượng thương hiệu, tên HKT, chữ phụ và kích thước hiển thị trên các màn hình. |
+| `MainLayout.jsx` | Ghép sidebar, header, menu hồ sơ, trung tâm nhắc việc và Outlet; điều khiển menu trên màn hình nhỏ. |
+| `MainLayout.css` | Bố cục khung ứng dụng, header, vùng nội dung, sidebar overlay và điều chỉnh responsive. |
+| `Sidebar.jsx` | Điều hướng giữa các trang, lọc ghi chú, tải danh sách bộ sưu tập, mở TopicModal và chuyển giao diện sáng/tối. |
+| `Sidebar.css` | Định dạng thanh điều hướng, mục đang chọn, danh sách bộ sưu tập và sidebar trên mobile. |
+
+#### Thành phần ghi chú — components/Notes
+
+Đường dẫn gốc của bảng: `Note/frontend/src/components/Notes/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `DocumentDetailView.jsx` | Trình soạn thảo chi tiết: tiêu đề, HTML, định dạng, ảnh, tệp đính kèm, nền giấy, ngày ghi chú, lịch nhắc, lưu và xuất file; xử lý nhập tiếng Việt. |
+| `DocumentDetailView.css` | Bố cục trang tài liệu, vùng soạn thảo, thanh công cụ, bảng thuộc tính, ảnh đang chọn, tệp đính kèm và responsive. |
+| `ExportNoteButton.jsx` | Menu xuất nội dung hiện tại sang DOCX hoặc TXT; gọi tiện ích tải file, khóa thao tác khi đang xuất và thông báo kết quả. |
+| `ExportNoteButton.css` | Giao diện nút xuất, menu chọn định dạng và trạng thái hover/đang xử lý. |
+| `NoteCard.jsx` | Hiển thị một ghi chú dạng thẻ với tiêu đề, trích đoạn và thời gian; hỗ trợ mở bằng chuột/bàn phím, sửa và xóa. |
+| `NoteCard.css` | Định dạng thẻ ghi chú, nền giấy, tiêu đề, nội dung xem trước, ngày cập nhật và các nút thao tác. |
+| `NoteFormattingTools.jsx` | Thanh định dạng chữ và đoạn: bật/tắt kiểu chữ, cỡ chữ, màu, căn lề, danh sách, checklist và xóa định dạng; giữ vùng chọn khi bấm công cụ. |
+| `NoteFormattingTools.css` | Bố cục công cụ định dạng, ô chọn màu và trạng thái các nút định dạng đang bật. |
+| `NoteImageTools.jsx` | Bảng chỉnh ảnh được chọn: kích thước, tỷ lệ khung, vị trí cắt, căn trái/giữa/phải, mô tả alt, thay ảnh và xóa ảnh. |
+| `NoteImageTools.css` | Định dạng ảnh xem trước, thanh chỉnh kích thước, nút tỷ lệ khung, nút căn ảnh và thao tác thay/xóa. |
+| `NoteList.jsx` | Danh sách ghi chú tái sử dụng: tìm tiêu đề/nội dung, sắp xếp, đổi kiểu bảng/lưới, mở, sửa, xóa và tạo ghi chú. |
+| `NoteList.css` | Bố cục danh sách, thanh tìm kiếm, bảng/lưới, số lượng ghi chú và trạng thái danh sách rỗng. |
+| `ReminderCenter.jsx` | Tải lịch nhắc, kiểm tra việc đến hạn, xác nhận đã thông báo với backend, hiển thị Việc cần làm hôm nay và mở ghi chú liên quan. |
+| `ReminderCenter.css` | Định dạng nút chuông, số lượng nhắc việc, bảng thông báo, danh sách việc và giao diện mobile. |
+| `TopicModal.jsx` | Hộp tạo/đổi tên/xóa bộ sưu tập; kiểm tra tên, đọc giá trị nhập đã ghép dấu, chuẩn hóa NFC và giữ tên khi lưu lỗi. |
+| `TopicModal.css` | Định dạng hộp bộ sưu tập, ô tên, thông báo lỗi, nút lưu/xóa và trạng thái đang gửi yêu cầu. |
+
+#### Thành phần giao diện dùng chung — components/UI
+
+Đường dẫn gốc của bảng: `Note/frontend/src/components/UI/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `ConfirmDialog.jsx` | Hộp xác nhận dùng khi xóa; cung cấp nút hủy/xác nhận, xử lý Escape, focus và trạng thái đang thực hiện. |
+| `ConfirmDialog.css` | Định dạng lớp phủ, hộp xác nhận, biểu tượng cảnh báo và các nút thao tác. |
+| `Icon.jsx` | Bộ icon SVG dùng chung; chọn biểu tượng theo tên để giao diện điều hướng và các nút dùng cùng phong cách. |
+| `PasswordInput.jsx` | Ô nhập mật khẩu có nút hiện/ẩn; dùng cho mật khẩu vùng ghi chú riêng tư. |
+| `PasswordInput.css` | Định dạng ô mật khẩu, biểu tượng khóa và nút hiện/ẩn ký tự. |
+| `PrivateAuthModal.jsx` | Hộp thiết lập mật khẩu riêng tư lần đầu hoặc mở khóa vùng riêng tư; hiển thị lỗi và thời gian bị khóa do nhập sai. |
+| `PrivateAuthModal.css` | Giao diện hộp mở khóa, biểu mẫu mật khẩu, trạng thái lỗi và hiệu ứng xuất hiện. |
+| `Toast.jsx` | Thông báo ngắn cho thành công, lỗi hoặc thông tin; có biểu tượng, nút đóng và thời gian tự ẩn. |
+| `Toast.css` | Định dạng vị trí, màu từng loại thông báo, nút đóng và hiệu ứng hiện/ẩn toast. |
+
+#### Menu hồ sơ — components/User
+
+Đường dẫn gốc của bảng: `Note/frontend/src/components/User/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `ProfileMenu.jsx` | Hiển thị avatar/tên hồ sơ và menu đi tới các tab hồ sơ, giao diện, mật khẩu riêng tư trong cài đặt. |
+| `ProfileMenu.css` | Định dạng avatar, nút mở menu, bảng lựa chọn và trạng thái focus/hover. |
+
+#### Các trang — pages
+
+Đường dẫn gốc của bảng: `Note/frontend/src/pages/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `DashboardPage.jsx` | Trang ghi chú chính: danh sách/bộ sưu tập, tìm kiếm, lọc, bảng/lưới, tạo/sửa, nháp, ghim, yêu thích và xác nhận xóa. |
+| `DashboardPage.css` | Bố cục dashboard, thanh thao tác, thư mục/bộ sưu tập, bảng/lưới ghi chú và vùng xem tài liệu. |
+| `CalendarPage.jsx` | Hiển thị ghi chú thường theo ngày, chuyển tháng, xem ngày âm lịch và mở/sửa/xóa ghi chú từ lịch. |
+| `CalendarPage.css` | Định dạng lưới lịch, ngày đang chọn, ghi chú theo ngày và bố cục lịch responsive. |
+| `PrivateNotePage.jsx` | Mở khóa vùng riêng tư, giữ mật khẩu/token trong bộ nhớ, giải mã để xem và mã hóa lại khi lưu; xử lý xóa và khóa phiên. |
+| `PrivateNotePage.css` | Định dạng màn hình đang khóa, danh sách ghi chú riêng tư, vùng nội dung và trạng thái mở khóa. |
+| `SettingsPage.jsx` | Trang cập nhật hồ sơ/avatar, tùy chọn giao diện và mật khẩu riêng tư; đổi mật khẩu kèm mã hóa lại ghi chú và thùng rác riêng tư. |
+| `SettingsPage.css` | Định dạng các tab cài đặt, biểu mẫu hồ sơ, lựa chọn màu/chủ đề, avatar và biểu mẫu mật khẩu. |
+| `TrashPage.jsx` | Xem thùng rác thường/riêng tư, mở khóa phần riêng tư, khôi phục ghi chú và xác nhận trước khi xóa vĩnh viễn. |
+| `TrashPage.css` | Bố cục thùng rác, nút chuyển phạm vi, danh sách ghi chú đã xóa, trạng thái rỗng và các nút khôi phục/xóa. |
+| `NotFoundPage.jsx` | Trang 404 cho đường dẫn không hợp lệ và liên kết quay lại trang ghi chú. |
+| `NotFoundPage.css` | Định dạng mã lỗi 404, biểu tượng, nội dung giải thích và nút điều hướng trở về. |
+
+#### Trạng thái toàn ứng dụng — context
+
+Đường dẫn gốc của bảng: `Note/frontend/src/context/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `AppContextBase.js` | Tạo đối tượng React Context để các component truy cập hồ sơ và tùy chọn giao diện dùng chung. |
+| `AppContext.jsx` | Cung cấp AppProvider: tải hồ sơ, quản lý trạng thái khởi động/lỗi, áp dụng theme/màu/mật độ và lưu tùy chọn với khả năng khôi phục khi API lỗi. |
+
+#### Kết nối API — services
+
+Đường dẫn gốc của bảng: `Note/frontend/src/services/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `api.js` | Tạo Axios instance dùng chung với địa chỉ API, header JSON và thời gian chờ; các service khác dùng instance này. |
+| `noteService.js` | Gọi API bộ sưu tập, ghi chú thường/riêng tư, thùng rác và lịch nhắc; gửi token cho yêu cầu riêng tư và phát sự kiện cập nhật lịch nhắc. |
+| `privateService.js` | Gọi API kiểm tra trạng thái, thiết lập, xác thực và đổi mật khẩu vùng riêng tư. |
+| `userService.js` | Gọi API lấy/cập nhật hồ sơ và lưu nhanh tùy chọn giao diện. |
+
+#### Tiện ích frontend — utils
+
+Đường dẫn gốc của bảng: `Note/frontend/src/utils/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `crypto.js` | Mã hóa/giải mã nội dung riêng tư bằng Web Crypto AES-GCM, suy ra khóa từ mật khẩu, hỗ trợ dữ liệu cũ và ước lượng kích thước sau mã hóa. |
+| `formatters.js` | Tiện ích định dạng ngày, tạo slug, rút gọn văn bản và viết hoa ký tự đầu. |
+| `noteAppearance.js` | Xác định nền giấy mặc định/tùy chỉnh và tạo style màu/ảnh nền dùng chung cho ghi chú. |
+| `noteExport.js` | Đọc nội dung HTML để xuất TXT/DOCX, xử lý tên file tiếng Việt, định dạng, ảnh, checklist và liệt kê tên tệp đính kèm. |
+| `noteFiles.js` | Tạo khối đính kèm trong trình soạn thảo, bổ sung nút × và gỡ các khối/liên kết tương ứng khi xóa tệp. |
+| `noteImages.js` | Kiểm tra loại/dung lượng ảnh, đọc Data URL, nén ảnh, lấy ảnh từ clipboard, tạo ID tệp và tính giới hạn dữ liệu cho ghi chú thường/riêng tư. |
+| `noteReminders.js` | Chuyển đổi lịch nhắc giữa thời gian nhập cục bộ và thời điểm UTC; định dạng lịch nhắc, kiểm tra đến hạn và việc trong hôm nay. |
+| `noteRichText.js` | Đọc định dạng tại vùng chọn, xác định các đoạn đang chọn và áp dụng style chữ; bảo vệ khối tệp đính kèm khỏi thao tác định dạng. |
+| `vietnameseLunar.js` | Tính ngày âm lịch Việt Nam từ ngày dương lịch theo múi giờ UTC+7 để hiển thị trong trang lịch. |
+| `wordPackage.js` | Tạo gói Office Open XML/ZIP cho file DOCX, gồm văn bản, định dạng, danh sách, ảnh và các quan hệ tài nguyên. |
+
+#### Kiểm thử frontend — test
+
+Đường dẫn gốc của bảng: `Note/frontend/test/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `noteExport.test.js` | Kiểm tra tên file tiếng Việt, TXT UTF-8, cấu trúc DOCX, định dạng, danh sách, ảnh và tải file. |
+| `noteFiles.test.js` | Kiểm tra xóa tệp đính kèm cùng các bản sao/liên kết của nó mà giữ các tệp khác và xử lý dữ liệu đính kèm cũ. |
+| `noteImages.test.js` | Kiểm tra MIME, dung lượng, Base64, ngân sách ảnh thường/riêng tư, clipboard, nén ảnh, giữ GIF và xử lý ảnh hỏng. |
+| `noteReminders.test.js` | Kiểm tra chuyển múi giờ/ngày, giữ lịch nhắc khi sửa nội dung, xóa lịch và nhận diện nhắc việc đến hạn hoặc bị bỏ lỡ. |
+| `privateCrypto.test.js` | Kiểm tra mã hóa/giải mã Unicode, mật khẩu sai, ước lượng dung lượng, lỗi Web Crypto và khả năng đọc ghi chú riêng tư cũ. |
+
+#### Cấu hình và điểm khởi chạy backend
+
+Đường dẫn gốc của bảng: `Note/server/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `.env.example` | Mẫu cấu hình PORT, NODE_ENV, JWT_SECRET và các biến tùy chọn để đổi thư mục dữ liệu/chọn sổ tay cũ cần chuyển. |
+| `package.json` | Khai báo Express, fs-extra, bcryptjs, jsonwebtoken, sanitize-html và các lệnh start, dev, test. |
+| `package-lock.json` | Khóa phiên bản phụ thuộc backend để các máy có thể cài lại nhất quán bằng npm ci. |
+| `server.js` | Khởi tạo Express, nạp biến môi trường, bật CORS/JSON, ghép router, API health, xử lý lỗi/404 và chuẩn bị sổ tay trước khi chạy server. |
+| `config/jwt.js` | Lấy JWT_SECRET, kiểm tra độ dài khóa trong production; khi development chưa cấu hình khóa thì tạo và lưu khóa ổn định cho các lần chạy sau. |
+
+#### Định tuyến API — routes
+
+Đường dẫn gốc của bảng: `Note/server/routes/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `authRoutes.js` | Khai báo API trạng thái, thiết lập, xác thực và đổi mật khẩu riêng tư; chuẩn bị sổ tay và tuần tự hóa các yêu cầu mật khẩu. |
+| `noteRoutes.js` | Khai báo API bộ sưu tập, ghi chú, thùng rác và lịch nhắc; giữ đường dẫn riêng tư cũ và đường dẫn ghi chú theo chủ đề. |
+| `privateRoutes.js` | Khai báo /api/private/auth và CRUD/thùng rác ghi chú riêng tư; yêu cầu phiên mở khóa cho thao tác trên dữ liệu riêng tư. |
+| `userRoutes.js` | Khai báo API đọc/cập nhật hồ sơ và cập nhật tùy chọn giao diện của sổ tay cá nhân. |
+
+#### Xử lý nghiệp vụ — controllers
+
+Đường dẫn gốc của bảng: `Note/server/controllers/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `authController.js` | Xử lý mật khẩu riêng tư: kiểm tra trạng thái, băm bcrypt, thiết lập/mở khóa/đổi mật khẩu và cập nhật dữ liệu đã mã hóa lại. |
+| `noteController.js` | Xử lý tạo/đọc/sửa/xóa ghi chú và bộ sưu tập, tên tiếng Việt, kiểm tra dữ liệu, thùng rác, khôi phục và xóa vĩnh viễn. |
+| `reminderController.js` | Tổng hợp lịch nhắc, ẩn tiêu đề thật của ghi chú riêng tư và ghi nhận đã thông báo để hạn chế thông báo trùng. |
+| `userController.js` | Đọc/cập nhật hồ sơ, avatar và tùy chọn giao diện; kiểm tra dữ liệu và loại bỏ thông tin mật khẩu khỏi phản hồi. |
+
+#### Lớp xử lý giữa — middleware
+
+Đường dẫn gốc của bảng: `Note/server/middleware/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `errorHandler.js` | Xử lý lỗi API tập trung: JSON sai, dữ liệu quá lớn, lỗi đọc file/token và trả phản hồi lỗi phù hợp. |
+| `notebookMiddleware.js` | Chuẩn bị sổ tay và gắn định danh sổ tay vào request trước khi router/controller xử lý. |
+| `privateAuthMiddleware.js` | Kiểm tra mật khẩu riêng tư đã được thiết lập, trạng thái khóa và token mở khóa trước khi cho truy cập dữ liệu riêng tư. |
+
+#### Tiện ích backend — utils
+
+Đường dẫn gốc của bảng: `Note/server/utils/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `noteBackground.js` | Kiểm tra ảnh nền ghi chú theo định dạng raster/Data URL và giới hạn dung lượng. |
+| `noteContent.js` | Lọc HTML bằng sanitize-html: loại mã thực thi, giữ các định dạng, ảnh, checklist và khối đính kèm được cho phép. |
+| `noteReminder.js` | Kiểm tra ngày giờ nhắc, chuẩn hóa sang UTC và từ chối lịch mới đặt trong quá khứ. |
+| `notebookMutation.js` | Xếp hàng các thao tác thay đổi JSON/lịch nhắc để yêu cầu đồng thời trong cùng tiến trình không ghi đè dữ liệu nhau. |
+| `notebookStorage.js` | Xác định thư mục dữ liệu, tạo hồ sơ/notes khi thiếu, đặt mặc định, chuyển sổ tay cũ và gộp ghi chú khỏi các bộ sưu tập mặc định đã bỏ. |
+| `privateAccess.js` | Tạo/xác minh JWT mở khóa vùng riêng tư với phạm vi riêng; liên kết phiên với phiên bản mật khẩu để phiên cũ hết hiệu lực sau khi đổi mật khẩu. |
+| `privateAttempts.js` | Lưu số lần nhập sai, khóa 10 phút từ lần sai thứ 6, trả thời gian chờ và tuần tự hóa các yêu cầu xác thực mật khẩu. |
+| `read_write.js` | Đọc JSON: coi file thiếu/rỗng là dữ liệu mới, báo lỗi JSON hỏng; ghi qua file tạm rồi đổi tên để tránh file ghi dở. |
+| `uiPreferences.js` | Kiểm tra giá trị theme, màu chủ đạo, kiểu danh sách, sắp xếp và mật độ; ghép tùy chọn hợp lệ với cấu hình trước đó. |
+
+#### Kiểm thử backend — test
+
+Đường dẫn gốc của bảng: `Note/server/test/`.
+
+| File | Tác dụng |
+| --- | --- |
+| `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
+| `security.test.js` | Kiểm tra lọc HTML nguy hiểm, giữ định dạng an toàn, giới hạn ảnh/ảnh nền và cấu hình JWT trong development/production. |
+
+**Tình trạng E2E trên main:** `playwright.config.js` và lệnh `test:e2e` vẫn còn, nhưng thư mục `Note/frontend/e2e/` đã được xóa và `package.json` hiện không khai báo `@playwright/test`. Vì vậy, đây chưa phải một bộ E2E chạy được ngay sau `npm install`. Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả kiểm thử được trình bày ở mục 14.
+
+### 9.4. Cây dữ liệu backend tạo khi chạy
+
+Với cấu hình mặc định, dữ liệu được lưu trong `Note/server/data/`. Có thể đổi nơi lưu sổ tay bằng `NOTEAPP_DATA_DIR`. Cây sau mô tả các file có thể xuất hiện khi sử dụng các chức năng; không phải tất cả đều được tạo ngay ở lần khởi động đầu tiên.
+
+```text
+Note/server/data/
+├── notes/
+│   ├── _unfiled.json
+│   └── <slug-bo-suu-tap>.json
+├── profile.json
+├── topics.json
+├── private.json
+├── trash.json
+├── private-trash.json
+├── private-attempts.json
+├── .notebook-migrated
+└── .jwt-secret
+```
+
+| File / thư mục | Tác dụng và thời điểm tạo |
+| --- | --- |
+| `notes/` | Nơi lưu ghi chú thường; backend bảo đảm thư mục tồn tại khi chuẩn bị sổ tay. |
+| `notes/_unfiled.json` | Mảng ghi chú chưa thuộc bộ sưu tập; được ghi khi lưu/chuyển ghi chú chưa phân loại hoặc chuyển dữ liệu mặc định cũ. |
+| `notes/<slug-bo-suu-tap>.json` | Mảng ghi chú của một bộ sưu tập. Ví dụ tên Học tập có thể được lưu trong file hoc-tap.json. Đây là mẫu tên file, không phải một file cố định có sẵn trong repo. |
+| `profile.json` | Hồ sơ, avatar, tùy chọn giao diện và bản băm mật khẩu riêng tư; backend tạo hồ sơ mặc định nếu file thiếu hoặc rỗng. |
+| `topics.json` | Lưu tên hiển thị bộ sưu tập có dấu, tách khỏi slug/tên file; được ghi khi tạo, đổi tên hoặc khôi phục bộ sưu tập. |
+| `private.json` | Mảng ghi chú riêng tư với nội dung mã hóa; được ghi khi tạo/cập nhật hoặc chuyển dữ liệu riêng tư cũ. |
+| `trash.json` | Mảng ghi chú thường đã xóa, kèm thông tin phục vụ khôi phục; được ghi khi thao tác thùng rác thường. |
+| `private-trash.json` | Mảng ghi chú riêng tư đã xóa; nội dung vẫn được mã hóa và thao tác yêu cầu mở khóa. |
+| `private-attempts.json` | Số lần nhập sai và thời điểm hết khóa vùng riêng tư; lưu khi kiểm tra mật khẩu để trạng thái tồn tại sau khi chạy lại backend. |
+| `.notebook-migrated` | Dấu mốc đã kiểm tra/chuyển sổ tay từ cấu trúc người dùng cũ; giúp không nhập dữ liệu cũ lặp lại ở các lần chạy sau. |
+| `.jwt-secret` | Khóa JWT tự tạo khi development chưa có JWT_SECRET; mặc định nằm trong Note/server/data, hoặc ở đường dẫn JWT_SECRET_FILE nếu được cấu hình. |
+
+Các API danh sách trả về `[]` khi file dữ liệu tương ứng chưa tồn tại hoặc rỗng. Backend tạo thư mục/file cần thiết khi khởi tạo hoặc ghi dữ liệu. File JSON có nội dung sai cú pháp được báo lỗi để người dùng có thể sửa hoặc phục hồi từ bản sao lưu.
+
+### 9.5. Tệp và thư mục phát sinh trên máy chạy
+
+| Đường dẫn | Tác dụng |
+| --- | --- |
+| `Note/frontend/node_modules/`, `Note/server/node_modules/` | Thư viện được npm cài từ package.json/package-lock.json; Git bỏ qua, cài lại bằng npm install hoặc npm ci. |
+| `Note/frontend/dist/` | Bản frontend dùng để triển khai, được tạo bởi npm run build. |
+| `Note/frontend/.env`, `Note/server/.env` | Cấu hình riêng của máy chạy, được tạo từ .env.example nếu cần; Git bỏ qua. |
+| `Note/frontend/test-results/`, `Note/frontend/playwright-report/` | Kết quả, ảnh/trace và báo cáo có thể sinh ra khi chạy Playwright sau khi bổ sung đủ bộ E2E và phụ thuộc. |
+| File `*.tmp` cạnh file JSON | File trung gian do read_write.js tạo khi ghi; được dọn sau khi hoàn tất và Git bỏ qua. |
+
+Để tìm nơi chỉnh sửa một chức năng: bắt đầu ở `pages/` hoặc `components/`, xem API trong `services/`, rồi đối chiếu `routes/`, `controllers/` và `utils/` bên backend. Các file CSS cùng tên điều chỉnh giao diện của trang/component đó.
 
 ## 10. Dữ liệu và sao lưu
 
