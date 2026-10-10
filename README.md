@@ -115,8 +115,9 @@ Nếu tải ZIP từ GitHub, giải nén và mở thư mục có chứa thư m�
 Mở terminal thứ nhất **tại thư mục gốc dự án**, chạy:
 
 ```bash
-cd Note/server
-npm ci
+cd Note
+cd Server
+npm i
 npm start
 ```
 
@@ -135,8 +136,9 @@ Trong quá trình phát triển, có thể thay `npm start` bằng `npm run dev`
 Mở terminal thứ hai **tại thư mục gốc dự án**, chạy:
 
 ```bash
-cd Note/frontend
-npm ci
+cd Note
+cd Frontend
+npm i
 npm run dev
 ```
 
