@@ -719,7 +719,7 @@ Mốc mã nguồn đối chiếu: [206033c](https://github.com/NguyenKhoa206/DoA
 | Nội dung | Kết quả đã ghi nhận |
 | --- | --- |
 | Backend unit/API | 49/49 test đạt |
-| Frontend unit | 26/26 test đạt |
+| Frontend unit | 26/25 test đạt |
 | Kiểm tra ô tên bộ sưu tập ở desktop/mobile trong đợt sửa gần nhất | 14/14 lượt đạt; sử dụng IME mô phỏng của Chromium |
 | Lint frontend | Đạt |
 | Build frontend | Đạt |
