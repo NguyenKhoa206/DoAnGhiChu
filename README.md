@@ -7,7 +7,7 @@
 
 | Thông tin | Nội dung |
 | --- | --- |
-| Đề tài | Hệ thống quản lý ghi chú và thông tin riêng tư |
+| Đề tài | Hệ thống quản lý ghi chú |
 | Môn học / lớp | Lập Trình Front End / CD CNTT 24 WEB C |
 | Giảng viên hướng dẫn | Nguyễn Hoàng Việt |
 | Nhóm thực hiện | HKT |
