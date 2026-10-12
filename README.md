@@ -193,7 +193,7 @@ Trong development, nếu chưa đặt `JWT_SECRET`, ứng dụng tạo khóa m�
 
 ### 9.1. Cây thư mục mã nguồn trên nhánh main
 
-Cây dưới đây liệt kê đầy đủ **107 file đang được Git quản lý**, tính từ thư mục gốc `DoAnGhiChu`. Dữ liệu tạo lúc chạy được mô tả riêng ở mục 9.4.
+Cây dưới đây liệt kê đầy đủ **106 file đang được Git quản lý**, tính từ thư mục gốc `DoAnGhiChu`. Dữ liệu tạo lúc chạy được mô tả riêng ở mục 9.4.
 
 **Tên thư mục theo source trên GitHub:** `frontend` và `server` viết thường. Trên môi trường phân biệt chữ hoa/thường, dùng `cd Note/frontend` và `cd Note/server`.
 
@@ -202,7 +202,7 @@ DoAnGhiChu/
 ├── Note/  # Mã nguồn ứng dụng
 │   ├── frontend/  # Giao diện React + Vite
 │   │   ├── public/  # Tài nguyên tĩnh
-│   │   │   └── favicon.svg
+│   │   │   └── bg.webp
 │   │   ├── src/  # Mã nguồn frontend
 │   │   │   ├── components/  # Thành phần giao diện tái sử dụng
 │   │   │   │   ├── Layouts/  # Khung ứng dụng và điều hướng
@@ -290,7 +290,6 @@ DoAnGhiChu/
 │   │   ├── index.html
 │   │   ├── package-lock.json
 │   │   ├── package.json
-│   │   ├── playwright.config.js
 │   │   └── vite.config.js
 │   └── server/  # Backend Node.js + Express
 │       ├── config/  # Cấu hình xác thực riêng tư
@@ -350,11 +349,10 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `.env.example` | Mẫu biến VITE_API_BASE_URL để frontend biết địa chỉ API backend. Sao chép thành .env nếu cần cấu hình riêng. |
 | `.oxlintrc.json` | Cấu hình Oxlint, bật quy tắc React Hooks và kiểm tra cách export component để phát hiện lỗi mã frontend. |
 | `index.html` | Trang HTML gốc: khai báo tiếng Việt, UTF-8, favicon, viewport, vùng root và đường dẫn nạp main.jsx. |
-| `package.json` | Khai báo React, Vite, Axios, React Router và các lệnh dev, build, preview, lint, test, test:e2e. |
+| `package.json` | Khai báo React, Vite, Axios, React Router và các lệnh dev, build, preview, lint, test; lint chỉ kiểm tra các đường dẫn còn tồn tại. |
 | `package-lock.json` | Khóa phiên bản phụ thuộc và thông tin cài đặt; giúp npm ci tái lập đúng bộ thư viện đã chốt. |
-| `playwright.config.js` | Cấu hình kiểm thử trình duyệt desktop/mobile, khởi chạy frontend và backend với dữ liệu tạm. Tình trạng sử dụng được ghi bên dưới. |
 | `vite.config.js` | Cấu hình Vite và plugin React để chạy máy chủ phát triển, xử lý JSX và tạo bản build frontend. |
-| `public/favicon.svg` | Biểu tượng SVG được index.html dùng làm icon trên tab trình duyệt. |
+| `public/bg.webp` | Ảnh WebP dùng trong Brand.jsx và làm icon trên tab trình duyệt; được tham chiếu qua /bg.webp ở cả development và bản build. |
 | `src/main.jsx` | Điểm vào JavaScript: tạo React root, nạp CSS và render App trong React.StrictMode. |
 | `src/App.jsx` | Ghép AppProvider và BrowserRouter, khai báo các route, xử lý trạng thái mở sổ tay và chuyển đường dẫn gốc/đăng nhập cũ về dashboard. |
 | `src/index.css` | Nạp styles/global.css và đặt kích thước, nền, màu chữ, bố cục cho root của ứng dụng. |
@@ -366,7 +364,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `Brand.jsx` | Hiển thị thương hiệu HKT, dòng Sổ tay của bạn và liên kết quay về dashboard. |
+| `Brand.jsx` | Hiển thị ảnh thương hiệu bg.webp, tên Note, dòng Sổ tay của bạn và liên kết quay về dashboard. |
 | `Brand.css` | Định dạng biểu tượng thương hiệu, tên HKT, chữ phụ và kích thước hiển thị trên các màn hình. |
 | `MainLayout.jsx` | Ghép sidebar, header, menu hồ sơ, trung tâm nhắc việc và Outlet; điều khiển menu trên màn hình nhỏ. |
 | `MainLayout.css` | Bố cục khung ứng dụng, header, vùng nội dung, sidebar overlay và điều chỉnh responsive. |
@@ -467,7 +465,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | File | Tác dụng |
 | --- | --- |
 | `crypto.js` | Mã hóa/giải mã nội dung riêng tư bằng Web Crypto AES-GCM, suy ra khóa từ mật khẩu, hỗ trợ dữ liệu cũ và ước lượng kích thước sau mã hóa. |
-| `formatters.js` | Tiện ích định dạng ngày, tạo slug, rút gọn văn bản và viết hoa ký tự đầu. |
+| `formatters.js` | Hàm formatDate định dạng ngày/giờ tiếng Việt cho danh sách và thẻ ghi chú; các hàm không còn sử dụng đã được dọn. |
 | `noteAppearance.js` | Xác định nền giấy mặc định/tùy chỉnh và tạo style màu/ảnh nền dùng chung cho ghi chú. |
 | `noteExport.js` | Đọc nội dung HTML để xuất TXT/DOCX, xử lý tên file tiếng Việt, định dạng, ảnh, checklist và liệt kê tên tệp đính kèm. |
 | `noteFiles.js` | Tạo khối đính kèm trong trình soạn thảo, bổ sung nút × và gỡ các khối/liên kết tương ứng khi xóa tệp. |
@@ -558,7 +556,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, chọn/chuyển thư mục, lỗi ghi và hoàn tác, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
 | `security.test.js` | Kiểm tra lọc HTML nguy hiểm, giữ định dạng an toàn, giới hạn ảnh/ảnh nền và cấu hình JWT trong development/production. |
 
-**Tình trạng E2E trên main:** `playwright.config.js` và lệnh `test:e2e` vẫn còn, nhưng thư mục `Note/frontend/e2e/` đã được xóa và `package.json` hiện không khai báo `@playwright/test`. Vì vậy, đây chưa phải một bộ E2E chạy được ngay sau `npm install`. Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả kiểm thử được trình bày ở mục 14.
+**Kiểm thử trên main:** Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả được trình bày ở mục 14. Cấu hình và lệnh E2E còn sót đã được dọn vì thư mục test trình duyệt không còn trong repo. Các lượt UI ghi nhận trước đây là những đợt kiểm tra riêng, không phải một bộ E2E được đóng gói trên main.
 
 ### 9.4. Cây dữ liệu backend tạo khi chạy
 
@@ -602,7 +600,6 @@ Các API danh sách trả về `[]` khi file dữ liệu tương ứng chưa t�
 | `Note/frontend/node_modules/`, `Note/server/node_modules/` | Thư viện được npm cài từ package.json/package-lock.json; Git bỏ qua, cài lại bằng npm install hoặc npm ci. |
 | `Note/frontend/dist/` | Bản frontend dùng để triển khai, được tạo bởi npm run build. |
 | `Note/frontend/.env`, `Note/server/.env` | Cấu hình riêng của máy chạy, được tạo từ .env.example nếu cần; Git bỏ qua. |
-| `Note/frontend/test-results/`, `Note/frontend/playwright-report/` | Kết quả, ảnh/trace và báo cáo có thể sinh ra khi chạy Playwright sau khi bổ sung đủ bộ E2E và phụ thuộc. |
 | File `*.tmp` cạnh file JSON | File trung gian do read_write.js tạo khi ghi; được dọn sau khi hoàn tất và Git bỏ qua. |
 
 Để tìm nơi chỉnh sửa một chức năng: bắt đầu ở `pages/` hoặc `components/`, xem API trong `services/`, rồi đối chiếu `routes/`, `controllers/` và `utils/` bên backend. Các file CSS cùng tên điều chỉnh giao diện của trang/component đó.
@@ -747,6 +744,8 @@ Mốc kiểm thử ban đầu: [206033c](https://github.com/NguyenKhoa206/DoAnGh
 
 Số lượt UI có thể gồm cùng một kịch bản chạy trên desktop và mobile; không cộng thành số test case chức năng độc lập.
 
+**Kiểm tra sau đợt dọn mã nguồn ngày 12/10/2026:** Backend đạt 60/60, frontend đạt 26/26; lint và build đều đạt. Kiểm tra logo/icon trên dashboard, lịch, cài đặt, vùng riêng tư, thùng rác và bộ sưu tập đạt 24/24 lượt: 6 trang × desktop/mobile × development/bản build. Không ghi nhận lỗi JavaScript hoặc ảnh lỗi. Các lượt kiểm tra này dùng dữ liệu tạm riêng, không thay đổi sổ tay đang sử dụng.
+
 ### Các nhóm kiểm tra chính
 
 - Người dùng mới, hồ sơ trắng, file/thư mục dữ liệu bị thiếu trong môi trường test.
@@ -785,6 +784,7 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Ngày và nhắc việc | Giữ ngày đã chọn, mở đúng ghi chú từ nhắc, chống nhắc trùng và kiểm tra lịch sai |
 | Lưu đồng thời | Xử lý lần lượt các cập nhật; đồng bộ đổi mật khẩu với phát nhắc |
 | Phụ thuộc | Khai báo sanitize-html để cài đặt backend đầy đủ từ package-lock.json |
+| Dọn mã nguồn | Bỏ cấu hình/lệnh E2E còn sót, ảnh kcj.jpg và ba hàm định dạng không dùng; đổi tên bg.webp cho khớp định dạng WebP, sửa đường dẫn logo/icon và cập nhật cây thư mục theo source hiện tại |
 
 ## 16. Xử lý lỗi thường gặp
 
