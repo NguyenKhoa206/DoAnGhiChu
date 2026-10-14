@@ -77,7 +77,8 @@ Frontend gửi yêu cầu đến API của backend. Backend phân chia xử lý 
 - Các đường dẫn tài khoản cũ `/login` và `/register` chuyển về trang ghi chú.
 - Ghi chú chưa chọn bộ sưu tập được lưu ở trạng thái **chưa phân loại**, không tự sinh bộ sưu tập “Ghi chú”.
 - Khi tạo ghi chú trong một bộ sưu tập, thư mục đó được chọn sẵn; người dùng vẫn có thể chọn bộ sưu tập khác hoặc Chưa phân loại trước khi lưu.
-- Mục Nhật ký đã được bỏ; dữ liệu ghi chú cũ trong các mục mặc định được chuyển sang chưa phân loại.
+- Mục Nhật ký mặc định đã được bỏ. Người dùng vẫn có thể tự tạo bộ sưu tập **Nhật ký** hoặc **Nhật kí**; ứng dụng giữ tên và dữ liệu khi tải lại, khởi động lại backend, chuyển tài liệu và khôi phục từ thùng rác.
+- Dữ liệu của bộ sưu tập Ghi chú mặc định cũ và Nhật ký cũ chưa lưu tên riêng được chuyển sang Chưa phân loại. Bộ sưu tập Nhật ký có tên được lưu trong `topics.json` được giữ nguyên.
 - Người dùng có thể bấm vùng nội dung của dòng/thẻ để mở ghi chú. Nút ghim, yêu thích và xóa hoạt động riêng.
 - Tên bộ sưu tập được lưu riêng với mã dùng trong đường dẫn và tên file, giúp giữ nguyên dấu và cách viết sau khi tải lại trang.
 - Khi đặt hoặc đổi tên, ô nhập giữ nội dung đang ghép dấu và đọc đúng giá trị hiện tại khi lưu.
@@ -517,7 +518,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | File | Tác dụng |
 | --- | --- |
 | `authController.js` | Xử lý mật khẩu riêng tư: kiểm tra trạng thái, băm bcrypt, thiết lập/mở khóa/đổi mật khẩu và cập nhật dữ liệu đã mã hóa lại. |
-| `noteController.js` | Xử lý ghi chú/bộ sưu tập, tên tiếng Việt, kiểm tra dữ liệu và thùng rác; chuyển ghi chú giữa các file JSON, kiểm tra đích và hoàn tác bản sao khi ghi nguồn lỗi để giữ dữ liệu cũ. |
+| `noteController.js` | Xử lý ghi chú/bộ sưu tập, tên tiếng Việt, kiểm tra dữ liệu và thùng rác; cho tạo/đổi tên thành Nhật ký, lưu ghi chú đúng thư mục; chuyển ghi chú giữa các file JSON, kiểm tra đích và hoàn tác bản sao khi ghi nguồn lỗi để giữ dữ liệu cũ. |
 | `reminderController.js` | Tổng hợp lịch nhắc, ẩn tiêu đề thật của ghi chú riêng tư và ghi nhận đã thông báo để hạn chế thông báo trùng. |
 | `userController.js` | Đọc/cập nhật hồ sơ, avatar và tùy chọn giao diện; kiểm tra dữ liệu và loại bỏ thông tin mật khẩu khỏi phản hồi. |
 
@@ -541,7 +542,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `noteContent.js` | Lọc HTML bằng sanitize-html: loại mã thực thi, giữ các định dạng, ảnh, checklist và khối đính kèm được cho phép. |
 | `noteReminder.js` | Kiểm tra ngày giờ nhắc, chuẩn hóa sang UTC và từ chối lịch mới đặt trong quá khứ. |
 | `notebookMutation.js` | Xếp hàng các thao tác thay đổi JSON/lịch nhắc để yêu cầu đồng thời trong cùng tiến trình không ghi đè dữ liệu nhau. |
-| `notebookStorage.js` | Xác định thư mục dữ liệu, tạo hồ sơ/notes khi thiếu, đặt mặc định, chuyển sổ tay cũ và gộp ghi chú khỏi các bộ sưu tập mặc định đã bỏ. |
+| `notebookStorage.js` | Xác định thư mục dữ liệu, tạo hồ sơ/notes khi thiếu, đặt mặc định, chuyển sổ tay cũ và gộp ghi chú khỏi các bộ sưu tập mặc định đã bỏ; giữ Nhật ký có tên riêng trong topics.json, báo lỗi khi dữ liệu tên bị hỏng. |
 | `privateAccess.js` | Tạo/xác minh JWT mở khóa vùng riêng tư với phạm vi riêng; liên kết phiên với phiên bản mật khẩu để phiên cũ hết hiệu lực sau khi đổi mật khẩu. |
 | `privateAttempts.js` | Lưu số lần nhập sai, khóa 10 phút từ lần sai thứ 6, trả thời gian chờ và tuần tự hóa các yêu cầu xác thực mật khẩu. |
 | `read_write.js` | Đọc JSON: coi file thiếu/rỗng là dữ liệu mới, báo lỗi JSON hỏng; ghi qua file tạm rồi đổi tên để tránh file ghi dở. |
@@ -553,7 +554,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 | File | Tác dụng |
 | --- | --- |
-| `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, chọn/chuyển thư mục, lỗi ghi và hoàn tác, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
+| `notebookApis.test.js` | Kiểm thử API với dữ liệu tạm: lần chạy đầu, ghi chú/bộ sưu tập, tiếng Việt, Nhật ký tự tạo và dữ liệu mặc định cũ, khởi động lại backend, chọn/chuyển thư mục, lỗi ghi và hoàn tác, hồ sơ, riêng tư, khóa mật khẩu, thùng rác, lịch nhắc và yêu cầu đồng thời. |
 | `security.test.js` | Kiểm tra lọc HTML nguy hiểm, giữ định dạng an toàn, giới hạn ảnh/ảnh nền và cấu hình JWT trong development/production. |
 
 **Kiểm thử trên main:** Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả được trình bày ở mục 14. Cấu hình và lệnh E2E còn sót đã được dọn vì thư mục test trình duyệt không còn trong repo. Các lượt UI ghi nhận trước đây là những đợt kiểm tra riêng, không phải một bộ E2E được đóng gói trên main.
@@ -746,12 +747,19 @@ Số lượt UI có thể gồm cùng một kịch bản chạy trên desktop v�
 
 **Kiểm tra sau đợt dọn mã nguồn ngày 12/10/2026:** Backend đạt 60/60, frontend đạt 26/26; lint và build đều đạt. Kiểm tra logo/icon trên dashboard, lịch, cài đặt, vùng riêng tư, thùng rác và bộ sưu tập đạt 24/24 lượt: 6 trang × desktop/mobile × development/bản build. Không ghi nhận lỗi JavaScript hoặc ảnh lỗi. Các lượt kiểm tra này dùng dữ liệu tạm riêng, không thay đổi sổ tay đang sử dụng.
 
+### Kiểm tra bổ sung ngày 14/10/2026
+
+Sau khi sửa quy tắc chặn tên Nhật ký, backend đạt **68/68 test**, frontend đạt **26/26 test**; lint và build frontend đều đạt. Bổ sung 8 test API về hai cách viết Nhật ký/Nhật kí, chuẩn hóa Unicode, giữ dữ liệu cũ có tên riêng, khởi động lại tiến trình, đổi tên, CRUD, chuyển thư mục, khôi phục bộ sưu tập và bảo vệ dữ liệu khi `topics.json` hỏng. Các test di chuyển bộ sưu tập mặc định cũ vẫn đạt.
+
+Kiểm tra giao diện đạt **12/12 lượt**: 6 kịch bản chạy trên desktop/mobile, gồm tạo hai cách viết và F5, tạo/sửa ghi chú, chuyển thư mục, đổi tên, xóa/khôi phục ghi chú và khôi phục sau khi xóa cả bộ sưu tập. Không ghi nhận lỗi JavaScript. Các lượt này dùng dữ liệu tạm riêng.
+
 ### Các nhóm kiểm tra chính
 
 - Người dùng mới, hồ sơ trắng, file/thư mục dữ liệu bị thiếu trong môi trường test.
 - Tiêu đề trống, toàn khoảng trắng, tên bộ sưu tập sai hoặc quá dài.
 - Tạo, sửa, xóa, khôi phục, ghim và yêu thích ghi chú.
 - Tên bộ sưu tập có dấu, đổi tên chỉ thêm dấu và giữ tên sau F5.
+- Tạo bộ sưu tập Nhật ký/Nhật kí, đổi tên vào/ra Nhật ký, giữ dữ liệu sau khởi động lại và khôi phục bộ sưu tập đã xóa; phân biệt với mục mặc định cũ cần di chuyển.
 - Chọn thư mục khi tạo từ dashboard/bộ sưu tập/lịch; chuyển giữa thư mục và Chưa phân loại, giữ ID/tệp/lịch nhắc, cập nhật danh sách nguồn và không tạo bản trùng.
 - Chuyển vào thư mục thiếu, trùng ID, JSON đích hỏng, lỗi ghi nguồn/đích, lưu đồng thời; giữ dữ liệu cũ, báo lỗi và cho thử lại.
 - Bật/tắt định dạng, danh sách, xóa định dạng và nhập tiếng Việt.
@@ -775,6 +783,7 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Nhập liệu | Chặn tiêu đề trống hoặc toàn khoảng trắng; kiểm tra tên bộ sưu tập |
 | Tiếng Việt | Bảo vệ quá trình ghép dấu trong editor và ô tên bộ sưu tập; chuẩn hóa Unicode khi lưu |
 | Bộ sưu tập | Chờ bộ gõ chốt dấu khi tạo/đổi tên; bỏ phản hồi tải cũ ghi đè tên mới; giữ tên sau F5, đổi tên và khôi phục đúng; bổ sung nhãn Học/Ý tưởng cho dữ liệu cũ chưa lưu tên |
+| Nhật ký tự tạo | Bỏ chặn tên Nhật ký khi tạo/đổi tên; lưu và chuyển ghi chú vào đúng file nhat-ky.json; giữ bộ sưu tập có tên riêng thay vì tự chuyển về Chưa phân loại sau mỗi yêu cầu |
 | Phân loại tài liệu | Thêm ô chọn bộ sưu tập khi tạo/sửa; chuyển giữa thư mục và Chưa phân loại; dùng URL nguồn và slug đích riêng, cập nhật danh sách, giữ dữ liệu và hoàn tác khi ghi lỗi |
 | Định dạng | Bật/tắt đậm, nghiêng, gạch chân, gạch ngang; xóa kiểu chữ đang chờ khi editor rỗng |
 | Hình ảnh | Tối ưu dung lượng, tránh dán trùng, giữ dữ liệu GIF và xử lý ảnh hỏng |
@@ -797,6 +806,7 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Frontend dùng cổng khác 5173 | Mở địa chỉ Vite in trong terminal |
 | Không mở được vùng riêng tư | Kiểm tra mật khẩu, trạng thái khóa và truy cập bằng localhost/HTTPS |
 | Tên bộ sưu tập cũ không có dấu | Cập nhật mã nguồn, khởi động lại app; nếu tên không dấu đã được lưu, dùng nút quản lý để đổi tên có dấu |
+| Không tạo được bộ sưu tập Nhật ký | Cập nhật nhánh main và khởi động lại backend, tải lại frontend; tạo bằng nút Tạo bộ sưu tập mới. Nếu tên đã tồn tại, dùng bộ sưu tập đó hoặc đổi sang tên khác |
 | Không gõ được tiếng Việt | Kiểm tra bảng mã Unicode, kiểu gõ Telex/VNI và chỉ dùng một bộ gõ; cập nhật mã nguồn rồi tải lại trang |
 | Không có popup nhắc việc | Giữ app/backend hoạt động, kiểm tra quyền Notification; xem bảng nhắc trong app |
 | Thay đổi biến môi trường chưa có hiệu lực | Khởi động lại tiến trình; frontend cần build lại nếu dùng bản build |

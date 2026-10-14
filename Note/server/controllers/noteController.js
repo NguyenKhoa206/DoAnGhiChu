@@ -6,7 +6,7 @@ const { cleanNoteContent } = require('../utils/noteContent');
 const { isValidNoteBackgroundImage } = require('../utils/noteBackground');
 const { normalizeReminder, reminderError } = require('../utils/noteReminder');
 const isTopicSlug = (value) => typeof value === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 80;
-const isDestinationTopic = (value) => value === '' || (isTopicSlug(value) && !['ghi-chu', 'nhat-ky'].includes(value));
+const isDestinationTopic = (value) => value === '' || (isTopicSlug(value) && !['ghi-chu'].includes(value));
 const validDate = (value) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -31,7 +31,7 @@ const MAX_PRIVATE_CONTENT_LENGTH = 8_000_000;
 
 const { getNotebookDir, UNFILED_FILE } = require('../utils/notebookStorage');
 const topicOfFile = (fileName) => fileName === UNFILED_FILE ? '' : fileName.replace(/\.json$/, '');
-const fileOfTopic = (slug) => slug && !['ghi-chu', 'nhat-ky'].includes(slug) ? `${slug}.json` : UNFILED_FILE;
+const fileOfTopic = (slug) => slug && !['ghi-chu'].includes(slug) ? `${slug}.json` : UNFILED_FILE;
 const getUserNotesDir = () => path.join(getNotebookDir(), 'notes');
 const getUserTrashFilePath = () => path.join(getNotebookDir(), 'trash.json');
 const getUserPrivateFilePath = () => path.join(getNotebookDir(), 'private.json');
@@ -126,7 +126,7 @@ const noteController = {
 
       const slug = slugify(name);
       if (!isTopicSlug(slug)) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
-      if (['ghi-chu', 'nhat-ky'].includes(slug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
+      if (['ghi-chu'].includes(slug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
       const notesDir = getUserNotesDir(userId);
       await fs.ensureDir(notesDir);
 
@@ -199,7 +199,7 @@ const noteController = {
       if (name.length > 80 || !isTopicSlug(oldSlug)) return res.status(400).json({ message: 'Tên hoặc mã chủ đề không hợp lệ.' });
       const newSlug = slugify(name);
       if (!isTopicSlug(newSlug)) return res.status(400).json({ message: 'Tên chủ đề không hợp lệ.' });
-      if (['ghi-chu', 'nhat-ky'].includes(newSlug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
+      if (['ghi-chu'].includes(newSlug)) return res.status(400).json({ message: 'Vui lòng chọn tên bộ sưu tập khác.' });
       const notesDir = getUserNotesDir(userId);
       const oldPath = path.join(notesDir, `${oldSlug}.json`);
       const newPath = path.join(notesDir, `${newSlug}.json`);

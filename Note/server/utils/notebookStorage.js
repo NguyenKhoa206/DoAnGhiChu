@@ -10,11 +10,19 @@ const getProfilePath = () => path.join(DATA_DIR, 'profile.json');
 const DEFAULT_PREFERENCES = { theme: 'light', primaryColor: '#2463eb', noteLayout: 'table', noteSort: 'newest', density: 'comfortable' };
 let preparing = Promise.resolve();
 
-// Remove the former automatic collections while retaining every saved note.
+// Remove former automatic collections, retaining explicitly named journals.
 const migrateDefaultTopics = async () => {
   const notesDir = path.join(DATA_DIR, 'notes');
   const target = path.join(notesDir, UNFILED_FILE);
+  const savedNames = await readJsonFile(path.join(DATA_DIR, 'topics.json'));
+  if (savedNames !== null && (typeof savedNames !== 'object' || Array.isArray(savedNames))) {
+    throw new Error('Tên bộ sưu tập phải là một đối tượng JSON.');
+  }
+  const names = savedNames || {};
   for (const slug of ['ghi-chu', 'nhat-ky']) {
+    // A name persisted by create/rename/restore marks a user collection.
+    // Keep it across requests and restarts instead of migrating it away.
+    if (slug === 'nhat-ky' && typeof names[slug] === 'string' && names[slug].trim()) continue;
     const source = path.join(notesDir, `${slug}.json`);
     if (!await fs.pathExists(source)) continue;
     const previous = await readJsonFile(source) || [];

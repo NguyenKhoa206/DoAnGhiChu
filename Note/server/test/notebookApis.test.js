@@ -163,7 +163,7 @@ test('invalid collection names cannot create files or overwrite persisted names'
   await request('/notes/topics', 'POST', { name: 'Học tập' });
   const namesPath = path.join(temporary, 'topics.json');
   const beforeNames = await fs.readFile(namesPath, 'utf8');
-  for (const name of ['', ' \t\n\u00a0 ', {}, [], 12, null, 'A'.repeat(81), '--', 'Ghi chú', 'Nhật ký']) {
+  for (const name of ['', ' \t\n\u00a0 ', {}, [], 12, null, 'A'.repeat(81), '--', 'Ghi chú']) {
     assert.equal((await request('/notes/topics', 'POST', { name })).status, 400);
     assert.equal((await request('/notes/topics/hoc-tap', 'PUT', { name })).status, 400);
   }
@@ -282,6 +282,151 @@ test('former automatic Ghi chu and Nhat ky collections migrate without losing no
   // Legacy note endpoints remain compatible without reintroducing a folder.
   assert.equal((await request('/notes/ghi-chu', 'POST', { title: 'Client cũ' })).status, 201);
   assert.deepEqual((await request('/notes/topics')).body.map((topic) => topic.slug), ['hoc-tap']);
+});
+
+test('users can create both Nhat ky spellings with NFC names without implicit collections', async () => {
+  for (const [name, slug, expectedName] of [
+    ['  Nhật ký  ', 'nhat-ky', 'Nhật ký'],
+    ['Nhật kí', 'nhat-ki', 'Nhật kí'],
+  ]) {
+    const created = await request('/notes/topics', 'POST', { name });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.topic.slug, slug);
+    assert.equal(created.body.topic.name, expectedName);
+    assert.equal((await request('/notes/topics')).body.find((topic) => topic.slug === slug).name, expectedName);
+  }
+  assert.equal((await request('/notes/topics', 'POST', { name: 'NHẬT KÝ' })).status, 400);
+  assert.equal((await request('/notes/topics', 'POST', { name: 'Nhật kí' })).status, 400);
+  assert.deepEqual((await request('/notes')).body, []);
+  assert.deepEqual(await fs.readdir(path.join(temporary, 'notes')), ['nhat-ki.json', 'nhat-ky.json']);
+});
+
+test('explicitly named journals are retained while former automatic Ghi chu notes still migrate', async () => {
+  const journal = [{ id: 'personal-journal', title: 'Nhật ký cá nhân', content: '<p>Không chuyển thư mục</p>', isPinned: true }];
+  const journalPath = path.join(temporary, 'notes', 'nhat-ky.json');
+  await fs.outputJson(journalPath, journal);
+  await fs.outputJson(path.join(temporary, 'topics.json'), { 'nhat-ky': 'Nhật ký' });
+  await fs.outputJson(path.join(temporary, 'notes', 'ghi-chu.json'), [{ id: 'old-default-note', title: 'Ghi chú mặc định cũ' }]);
+  const journalBefore = await fs.readFile(journalPath, 'utf8');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    assert.equal((await request('/users/profile')).status, 200);
+    assert.equal((await request('/notes/topics')).body.find((topic) => topic.slug === 'nhat-ky').name, 'Nhật ký');
+    assert.deepEqual((await request('/notes/nhat-ky')).body, [{ ...journal[0], topicSlug: 'nhat-ky' }]);
+    assert.equal((await request('/notes')).body.find((note) => note.id === 'old-default-note').topicSlug, '');
+  }
+  assert.equal(await fs.readFile(journalPath, 'utf8'), journalBefore);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', 'ghi-chu.json')), false);
+});
+
+test('a user-created journal and its notes survive a new backend process', async () => {
+  await request('/notes/topics', 'POST', { name: 'Nhật ký' });
+  const note = (await request('/notes/nhat-ky', 'POST', { title: 'Nhật ký sau khởi động lại', content: '<p>Giữ đủ dấu</p>', topicSlug: 'nhat-ky', isFavorite: true })).body.note;
+  const child = spawnSync(process.execPath, ['-e', `
+    (async () => {
+      const app = require('./server');
+      const server = app.listen(0, '127.0.0.1');
+      await new Promise(resolve => server.once('listening', resolve));
+      const base = 'http://127.0.0.1:' + server.address().port + '/api/notes';
+      const topics = await (await fetch(base + '/topics')).json();
+      const notes = await (await fetch(base + '/nhat-ky')).json();
+      process.stdout.write('JOURNAL_JSON:' + JSON.stringify({ topics, notes }));
+      await new Promise(resolve => server.close(resolve));
+    })().catch(error => { console.error(error); process.exitCode = 1; });
+  `], { cwd: path.join(__dirname, '..'), env: process.env, encoding: 'utf8', timeout: 10000 });
+  assert.equal(child.status, 0, child.stderr);
+  const restored = JSON.parse(child.stdout.split('JOURNAL_JSON:')[1]);
+  assert.equal(restored.topics.find((topic) => topic.slug === 'nhat-ky').name, 'Nhật ký');
+  assert.deepEqual(restored.notes, [note]);
+  assert.equal(restored.notes[0].isFavorite, true);
+});
+
+test('renaming a collection into Nhat ky preserves notes, updates trash and allows renaming out again', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const active = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú đang dùng', isPinned: true })).body.note;
+  const deleted = (await request('/notes/hoc-tap', 'POST', { title: 'Ghi chú đã xóa' })).body.note;
+  await request(`/notes/hoc-tap/${deleted.id}`, 'DELETE');
+  const renamed = await request('/notes/topics/hoc-tap', 'PUT', { name: 'Nhật ký' });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.body.topic.slug, 'nhat-ky');
+  assert.equal((await request('/notes/nhat-ky')).body[0].id, active.id);
+  assert.equal((await request('/notes/trash')).body[0].originalTopicSlug, 'nhat-ky');
+  assert.equal((await request('/notes/trash')).body[0].originalTopicName, 'Nhật ký');
+  assert.equal((await request(`/notes/trash/${deleted.id}/restore`, 'POST')).body.topicSlug, 'nhat-ky');
+  assert.equal((await request('/notes/topics/nhat-ky', 'PUT', { name: 'Công việc' })).status, 200);
+  assert.deepEqual((await request('/notes/cong-viec')).body.map((note) => note.id).sort(), [active.id, deleted.id].sort());
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', 'nhat-ky.json')), false);
+  assert.equal((await request('/notes/topics')).body[0].name, 'Công việc');
+});
+
+test('journal note CRUD uses its own file instead of redirecting to unclassified notes', async () => {
+  const unfiled = (await request('/notes', 'POST', { title: 'Ghi chú chưa phân loại' })).body;
+  await request('/notes/topics', 'POST', { name: 'Nhật ký' });
+  const created = await request('/notes/nhat-ky', 'POST', { title: 'Ghi chú Nhật ký', content: '<p>Đúng thư mục</p>', topicSlug: 'nhat-ky', isPinned: true });
+  assert.equal(created.status, 201);
+  const note = created.body.note;
+  assert.equal(note.topicSlug, 'nhat-ky');
+  assert.deepEqual((await request('/notes/nhat-ky')).body, [note]);
+  assert.equal((await request(`/notes/nhat-ky/${note.id}`, 'PUT', { title: 'Nhật ký đã sửa' })).status, 200);
+  assert.equal((await request('/notes/nhat-ky')).body[0].title, 'Nhật ký đã sửa');
+  assert.equal((await request(`/notes/nhat-ky/${note.id}`, 'DELETE')).status, 200);
+  assert.equal((await request('/notes/trash')).body[0].originalTopicSlug, 'nhat-ky');
+  assert.equal((await request(`/notes/trash/${note.id}/restore`, 'POST')).body.topicSlug, 'nhat-ky');
+  assert.equal((await request('/notes/nhat-ky')).body[0].id, note.id);
+  assert.equal((await request('/notes/nhat-ky')).body[0].isPinned, true);
+  assert.deepEqual((await fs.readJson(path.join(temporary, 'notes', '_unfiled.json'))).map((item) => item.id), [unfiled.id]);
+});
+
+test('notes can move between unclassified and both journal spellings without losing metadata', async () => {
+  for (const name of ['Nhật ký', 'Nhật kí']) await request('/notes/topics', 'POST', { name });
+  const note = (await request('/notes', 'POST', {
+    title: 'Chuyển vào Nhật ký', content: '<p>Giữ nội dung</p>', isFavorite: true, isPinned: true,
+    attachments: [{ id: 'file_journal123', name: 'Nhật ký.txt', dataUrl: 'data:text/plain;base64,VGVzdA==' }],
+    noteDate: '2026-10-14', reminderAt: new Date(Date.now() + 3600000).toISOString(),
+  })).body;
+  let source = '';
+  for (const topicSlug of ['nhat-ky', 'nhat-ki', '']) {
+    const prefix = source ? `/notes/${source}` : '/notes';
+    const moved = await request(`${prefix}/${note.id}`, 'PUT', { topicSlug });
+    assert.equal(moved.status, 200);
+    const saved = moved.body.note || moved.body;
+    assert.equal(saved.topicSlug, topicSlug);
+    for (const field of ['id', 'title', 'content', 'attachments', 'createdAt', 'noteDate', 'reminderAt', 'isFavorite', 'isPinned']) assert.deepEqual(saved[field], note[field]);
+    assert.equal((await request('/notes')).body.filter((item) => item.id === note.id).length, 1);
+    source = topicSlug;
+  }
+  assert.equal((await request('/notes/topics')).body.length, 2);
+  assert.deepEqual((await request('/notes/nhat-ky')).body, []);
+  assert.deepEqual((await request('/notes/nhat-ki')).body, []);
+});
+
+test('restoring a note from a deleted journal recreates its named collection without migration', async () => {
+  await request('/notes/topics', 'POST', { name: 'Nhật ký' });
+  const note = (await request('/notes/nhat-ky', 'POST', { title: 'Khôi phục cả thư mục', topicSlug: 'nhat-ky' })).body.note;
+  assert.equal((await request('/notes/topics/nhat-ky', 'DELETE')).status, 200);
+  assert.deepEqual((await request('/notes/topics')).body, []);
+  assert.equal((await request('/notes/trash')).body[0].originalTopicName, 'Nhật ký');
+  assert.equal((await request(`/notes/trash/${note.id}/restore`, 'POST')).body.topicSlug, 'nhat-ky');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    assert.equal((await request('/notes/topics')).body[0].name, 'Nhật ký');
+    assert.equal((await request('/notes/nhat-ky')).body[0].id, note.id);
+  }
+});
+
+test('malformed collection-name metadata never silently migrates a named journal', async () => {
+  await request('/notes/topics', 'POST', { name: 'Nhật ký' });
+  const note = (await request('/notes/nhat-ky', 'POST', { title: 'Giữ khi metadata lỗi' })).body.note;
+  const namesPath = path.join(temporary, 'topics.json');
+  const journalPath = path.join(temporary, 'notes', 'nhat-ky.json');
+  const originalNames = await fs.readFile(namesPath, 'utf8');
+  const originalNotes = await fs.readFile(journalPath, 'utf8');
+  for (const invalid of ['[]', 'false', '42', '"Nhật ký"', '{invalid']) {
+    await fs.writeFile(namesPath, invalid);
+    assert.equal((await request('/notes/topics')).status, 500);
+    assert.equal(await fs.readFile(journalPath, 'utf8'), originalNotes);
+    assert.equal(await fs.readFile(namesPath, 'utf8'), invalid);
+  }
+  await fs.writeFile(namesPath, originalNames);
+  assert.equal((await request('/notes/nhat-ky')).body[0].id, note.id);
 });
 
 test('invalid dates, missing timezone, invalid types and past schedules cannot change saved notes', async () => {
@@ -461,7 +606,7 @@ test('creating notes honors an explicit existing collection and rejects stale or
   }
   assert.equal((await request('/notes/hoc-tap')).body.length, 2);
   const before = (await request('/notes')).body;
-  for (const topicSlug of [null, {}, '../private', 'Học tập', 'ghi-chu', 'nhat-ky']) {
+  for (const topicSlug of [null, {}, '../private', 'Học tập', 'ghi-chu']) {
     assert.equal((await request('/notes', 'POST', { title: 'Không được tạo', topicSlug })).status, 400);
   }
   assert.equal((await request('/notes/hoc-tap', 'POST', { title: 'Nguồn và đích không khớp', topicSlug: '' })).status, 400);
@@ -542,7 +687,7 @@ test('moving back to unclassified creates its missing file and repeated saves ne
 test('invalid destination slugs cannot move notes or write outside their public storage', async () => {
   const note = (await request('/notes', 'POST', { title: 'Giữ nguyên' })).body;
   const original = await fs.readJson(path.join(temporary, 'notes', '_unfiled.json'));
-  for (const topicSlug of [null, {}, [], 123, '../private', 'Học tập', 'ghi-chu', 'nhat-ky', 'a'.repeat(81)]) {
+  for (const topicSlug of [null, {}, [], 123, '../private', 'Học tập', 'ghi-chu', 'a'.repeat(81)]) {
     assert.equal((await request(`/notes/${note.id}`, 'PUT', { topicSlug, title: 'Không được lưu' })).status, 400);
     assert.deepEqual(await fs.readJson(path.join(temporary, 'notes', '_unfiled.json')), original);
   }
