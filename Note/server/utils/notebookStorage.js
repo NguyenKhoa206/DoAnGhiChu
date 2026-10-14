@@ -1,6 +1,7 @@
 const path = require('node:path');
 const fs = require('fs-extra');
 const { readJsonFile, writeJsonFile } = require('./read_write');
+const { withNotebookMutation } = require('./notebookMutation');
 
 const DATA_DIR = path.resolve(process.env.NOTEAPP_DATA_DIR || path.join(__dirname, '../data'));
 const NOTEBOOK_ID = 'local-notebook';
@@ -8,7 +9,6 @@ const UNFILED_FILE = '_unfiled.json';
 const getNotebookDir = () => DATA_DIR;
 const getProfilePath = () => path.join(DATA_DIR, 'profile.json');
 const DEFAULT_PREFERENCES = { theme: 'light', primaryColor: '#2463eb', noteLayout: 'table', noteSort: 'newest', density: 'comfortable' };
-let preparing = Promise.resolve();
 
 // Remove former automatic collections, retaining explicitly named journals.
 const migrateDefaultTopics = async () => {
@@ -55,29 +55,27 @@ const migrateLegacyNotebook = async () => {
   await fs.outputFile(marker, 'Local notebook initialized. Legacy source files are retained.\n');
 };
 
-const prepareNotebook = () => {
-  const operation = preparing.then(async () => {
-    await fs.ensureDir(DATA_DIR);
-    await migrateLegacyNotebook();
-    const previous = await readJsonFile(getProfilePath());
-    const valid = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {};
-    const now = new Date().toISOString();
-    const profile = {
-      ...valid, id: NOTEBOOK_ID, displayName: valid.displayName || 'Sổ tay cá nhân', email: valid.email || '',
-      preferences: { ...DEFAULT_PREFERENCES, ...valid.preferences },
-      privatePasswordHash: valid.privatePasswordHash || null,
-      createdAt: valid.createdAt || now, updatedAt: valid.updatedAt || now,
-    };
-    delete profile.passwordHash;
-    delete profile.username;
-    delete profile.role;
-    if (JSON.stringify(previous) !== JSON.stringify(profile)) await writeJsonFile(getProfilePath(), profile);
-    await fs.ensureDir(path.join(DATA_DIR, 'notes'));
-    await migrateDefaultTopics();
-    return profile;
-  });
-  preparing = operation.catch(() => {});
-  return operation;
-};
+// Preparation can migrate collection files. Use the mutation queue so a reload
+// cannot treat a file whose display name is still being saved as legacy data.
+const prepareNotebook = () => withNotebookMutation(async () => {
+  await fs.ensureDir(DATA_DIR);
+  await migrateLegacyNotebook();
+  const previous = await readJsonFile(getProfilePath());
+  const valid = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {};
+  const now = new Date().toISOString();
+  const profile = {
+    ...valid, id: NOTEBOOK_ID, displayName: valid.displayName || 'Sổ tay cá nhân', email: valid.email || '',
+    preferences: { ...DEFAULT_PREFERENCES, ...valid.preferences },
+    privatePasswordHash: valid.privatePasswordHash || null,
+    createdAt: valid.createdAt || now, updatedAt: valid.updatedAt || now,
+  };
+  delete profile.passwordHash;
+  delete profile.username;
+  delete profile.role;
+  if (JSON.stringify(previous) !== JSON.stringify(profile)) await writeJsonFile(getProfilePath(), profile);
+  await fs.ensureDir(path.join(DATA_DIR, 'notes'));
+  await migrateDefaultTopics();
+  return profile;
+});
 
 module.exports = { DATA_DIR, NOTEBOOK_ID, UNFILED_FILE, getNotebookDir, getProfilePath, prepareNotebook };

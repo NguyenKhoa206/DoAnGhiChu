@@ -1,5 +1,5 @@
-// JSON updates and reminder delivery share one queue, so two tabs cannot
-// deliver the same reminder or overwrite a note edited at the same instant.
+// Preparation, JSON updates and reminder delivery share one queue, so a reload
+// cannot migrate a collection mid-save, deliver a reminder twice or overwrite edits.
 let pending = Promise.resolve();
 const withNotebookMutation = (operation) => {
   const result = pending.then(operation);

@@ -429,6 +429,77 @@ test('malformed collection-name metadata never silently migrates a named journal
   assert.equal((await request('/notes/nhat-ky')).body[0].id, note.id);
 });
 
+// Reproduce the interval between saving a collection file and its display name.
+// Dashboard/profile/reminder requests must not migrate that in-progress file.
+const reloadDuringTopicNameWrite = async (mutate, failWrite = false) => {
+  const namesPath = path.join(temporary, 'topics.json');
+  const originalRename = fs.rename;
+  let entered, release, timer, mutation, reads;
+  const paused = new Promise((resolve) => { entered = resolve; });
+  const resumed = new Promise((resolve) => { release = resolve; });
+  let intercepted = false;
+  fs.rename = async (source, destination, ...args) => {
+    if (destination === namesPath && !intercepted) {
+      intercepted = true;
+      entered();
+      await resumed;
+      if (failWrite) throw Object.assign(new Error('Simulated paused topic-name write failure'), { code: 'EIO' });
+    }
+    return originalRename(source, destination, ...args);
+  };
+  try {
+    mutation = mutate();
+    await Promise.race([paused, mutation.then(() => { throw new Error('Topic-name write was not reached'); })]);
+    reads = Promise.all(['/notes/topics', '/notes', '/users/profile', '/notes/reminders'].map((url) => request(url)));
+    await Promise.race([reads, new Promise((resolve) => { timer = setTimeout(resolve, 100); })]);
+    release();
+    return await Promise.all([mutation, reads]);
+  } finally {
+    clearTimeout(timer);
+    release();
+    await Promise.allSettled([mutation, reads].filter(Boolean));
+    fs.rename = originalRename;
+  }
+};
+
+test('journal collection preparation keeps newly created folders during concurrent reloads', async () => {
+  await request('/users/profile');
+  const [created, reloads] = await reloadDuringTopicNameWrite(() => request('/notes/topics', 'POST', { name: 'nhật ký' }));
+  assert.equal(created.status, 201);
+  assert(reloads.every((response) => response.status === 200));
+  assert.deepEqual(reloads[0].body.map(({ slug, name }) => ({ slug, name })), [{ slug: 'nhat-ky', name: 'nhật ký' }]);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', 'nhat-ky.json')), true);
+  assert.deepEqual((await request('/notes/topics')).body.map((topic) => topic.name), ['nhật ký']);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', '_unfiled.json')), false);
+});
+
+test('journal collection preparation keeps renamed folders and their notes during concurrent reloads', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const note = (await request('/notes/hoc-tap', 'POST', { title: 'Giữ trong thư mục khi đổi tên', isPinned: true })).body.note;
+  const [renamed, reloads] = await reloadDuringTopicNameWrite(() => request('/notes/topics/hoc-tap', 'PUT', { name: 'Nhật ký' }));
+  assert.equal(renamed.status, 200);
+  assert(reloads.every((response) => response.status === 200));
+  assert.deepEqual(reloads[0].body.map((topic) => topic.name), ['Nhật ký']);
+  assert.deepEqual(reloads[1].body, [{ ...note, topicSlug: 'nhat-ky' }]);
+  assert.deepEqual((await request('/notes/nhat-ky')).body, [{ ...note, topicSlug: 'nhat-ky' }]);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', '_unfiled.json')), false);
+});
+
+test('journal collection preparation allows rollback when a paused name write fails during reloads', async () => {
+  await request('/notes/topics', 'POST', { name: 'Học tập' });
+  const note = (await request('/notes/hoc-tap', 'POST', { title: 'Giữ nguồn khi đổi tên lỗi', isFavorite: true })).body.note;
+  const beforeNames = await fs.readFile(path.join(temporary, 'topics.json'), 'utf8');
+  const [renamed, reloads] = await reloadDuringTopicNameWrite(() => request('/notes/topics/hoc-tap', 'PUT', { name: 'Nhật ký' }), true);
+  assert.equal(renamed.status, 500);
+  assert(reloads.every((response) => response.status === 200));
+  assert.deepEqual(reloads[0].body.map((topic) => topic.name), ['Học tập']);
+  assert.deepEqual(reloads[1].body, [{ ...note, topicSlug: 'hoc-tap' }]);
+  assert.deepEqual((await request('/notes/hoc-tap')).body, [{ ...note, topicSlug: 'hoc-tap' }]);
+  assert.equal(await fs.readFile(path.join(temporary, 'topics.json'), 'utf8'), beforeNames);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', 'nhat-ky.json')), false);
+  assert.equal(await fs.pathExists(path.join(temporary, 'notes', '_unfiled.json')), false);
+});
+
 test('invalid dates, missing timezone, invalid types and past schedules cannot change saved notes', async () => {
   const future = new Date(Date.now() + 3_600_000).toISOString();
   const saved = (await request('/notes', 'POST', { title: 'Lịch đúng', reminderAt: future })).body;

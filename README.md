@@ -529,7 +529,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 | `noteBackground.js` | Kiểm tra ảnh nền ghi chú theo định dạng raster/Data URL và giới hạn dung lượng. |
 | `noteContent.js` | Lọc HTML bằng sanitize-html: loại mã thực thi, giữ các định dạng, ảnh, checklist và khối đính kèm được cho phép. |
 | `noteReminder.js` | Kiểm tra ngày giờ nhắc, chuẩn hóa sang UTC và từ chối lịch mới đặt trong quá khứ. |
-| `notebookMutation.js` | Xếp hàng các thao tác thay đổi JSON/lịch nhắc để yêu cầu đồng thời trong cùng tiến trình không ghi đè dữ liệu nhau. |
+| `notebookMutation.js` | Xếp hàng chung việc chuẩn bị/di chuyển dữ liệu cũ, thay đổi JSON và phát lịch nhắc; ngăn tải nền xóa bộ sưu tập đang tạo/đổi tên và tránh ghi đè dữ liệu trong cùng tiến trình. |
 | `notebookStorage.js` | Xác định thư mục dữ liệu, tạo hồ sơ/notes khi thiếu, đặt mặc định, chuyển sổ tay cũ và gộp ghi chú khỏi các bộ sưu tập mặc định đã bỏ; giữ Nhật ký có tên riêng trong topics.json, báo lỗi khi dữ liệu tên bị hỏng. |
 | `privateAccess.js` | Tạo/xác minh JWT mở khóa vùng riêng tư với phạm vi riêng; liên kết phiên với phiên bản mật khẩu để phiên cũ hết hiệu lực sau khi đổi mật khẩu. |
 | `privateAttempts.js` | Lưu số lần nhập sai, khóa 10 phút từ lần sai thứ 6, trả thời gian chờ và tuần tự hóa các yêu cầu xác thực mật khẩu. |
@@ -741,6 +741,8 @@ Sau khi sửa quy tắc chặn tên Nhật ký, backend đạt **68/68 test**, f
 
 Kiểm tra giao diện đạt **12/12 lượt**: 6 kịch bản chạy trên desktop/mobile, gồm tạo hai cách viết và F5, tạo/sửa ghi chú, chuyển thư mục, đổi tên, xóa/khôi phục ghi chú và khôi phục sau khi xóa cả bộ sưu tập. Không ghi nhận lỗi JavaScript. Các lượt này dùng dữ liệu tạm riêng.
 
+**Sửa bổ sung lỗi tạo Nhật ký xong không hiện:** Việc chuẩn bị dữ liệu nay dùng chung hàng đợi với thao tác tạo/đổi tên. Yêu cầu tải danh sách, hồ sơ hoặc lịch nhắc phải chờ lưu tên xong; không còn nhầm file Nhật ký đang ghi với bộ sưu tập mặc định cũ. Bổ sung 3 test tái hiện tạo, đổi tên và hoàn tác khi ghi tên lỗi dưới yêu cầu đồng thời: cả 3 lỗi tái hiện trên bản trước và đều đạt sau sửa; toàn bộ backend đạt **71/71 test**. Chạy lại **12/12 lượt UI** trên desktop/mobile với ghi tên chậm 120 ms và tổng cộng 2.565 yêu cầu đọc nền trong quá trình kiểm tra, không ghi nhận lỗi JavaScript hoặc lỗi API nền. Dữ liệu sổ tay đang dùng được giữ nguyên.
+
 ### Các nhóm kiểm tra chính
 
 - Người dùng mới, hồ sơ trắng, file/thư mục dữ liệu bị thiếu trong môi trường test.
@@ -748,6 +750,7 @@ Kiểm tra giao diện đạt **12/12 lượt**: 6 kịch bản chạy trên des
 - Tạo, sửa, xóa, khôi phục, ghim và yêu thích ghi chú.
 - Tên bộ sưu tập có dấu, đổi tên chỉ thêm dấu và giữ tên sau F5.
 - Tạo bộ sưu tập Nhật ký/Nhật kí, đổi tên vào/ra Nhật ký, giữ dữ liệu sau khởi động lại và khôi phục bộ sưu tập đã xóa; phân biệt với mục mặc định cũ cần di chuyển.
+- Tải danh sách/hồ sơ/lịch nhắc trong lúc tạo hoặc đổi tên Nhật ký; giữ thư mục và ghi chú, hoàn tác đúng nếu ghi tên thất bại.
 - Chọn thư mục khi tạo từ dashboard/bộ sưu tập/lịch; chuyển giữa thư mục và Chưa phân loại, giữ ID/tệp/lịch nhắc, cập nhật danh sách nguồn và không tạo bản trùng.
 - Chuyển vào thư mục thiếu, trùng ID, JSON đích hỏng, lỗi ghi nguồn/đích, lưu đồng thời; giữ dữ liệu cũ, báo lỗi và cho thử lại.
 - Bật/tắt định dạng, danh sách, xóa định dạng và nhập tiếng Việt.
@@ -765,7 +768,7 @@ Kiểm tra giao diện đạt **12/12 lượt**: 6 kịch bản chạy trên des
 | Nhập liệu | Chặn tiêu đề trống hoặc toàn khoảng trắng; kiểm tra tên bộ sưu tập |
 | Tiếng Việt | Bảo vệ quá trình ghép dấu trong editor và ô tên bộ sưu tập; chuẩn hóa Unicode khi lưu |
 | Bộ sưu tập | Chờ bộ gõ chốt dấu khi tạo/đổi tên; bỏ phản hồi tải cũ ghi đè tên mới; giữ tên sau F5, đổi tên và khôi phục đúng; bổ sung nhãn Học/Ý tưởng cho dữ liệu cũ chưa lưu tên |
-| Nhật ký tự tạo | Bỏ chặn tên Nhật ký khi tạo/đổi tên; lưu và chuyển ghi chú vào đúng file nhat-ky.json; giữ bộ sưu tập có tên riêng thay vì tự chuyển về Chưa phân loại sau mỗi yêu cầu |
+| Nhật ký tự tạo | Bỏ chặn tên Nhật ký khi tạo/đổi tên; lưu và chuyển ghi chú vào đúng file nhat-ky.json; giữ bộ sưu tập có tên riêng; xếp việc chuẩn bị dữ liệu chung với thao tác ghi để tải nền không xóa thư mục đang tạo/đổi tên |
 | Phân loại tài liệu | Thêm ô chọn bộ sưu tập khi tạo/sửa; chuyển giữa thư mục và Chưa phân loại; dùng URL nguồn và slug đích riêng, cập nhật danh sách, giữ dữ liệu và hoàn tác khi ghi lỗi |
 | Định dạng | Bật/tắt đậm, nghiêng, gạch chân, gạch ngang; xóa kiểu chữ đang chờ khi editor rỗng |
 | Hình ảnh | Tối ưu dung lượng, tránh dán trùng, giữ dữ liệu GIF và xử lý ảnh hỏng |
