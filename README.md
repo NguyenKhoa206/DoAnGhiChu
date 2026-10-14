@@ -1,4 +1,4 @@
-# HKT — Hệ thống quản lý ghi chú và thông tin riêng tư
+#  Hệ thống quản lý ghi chú
 
 Ứng dụng sổ tay cá nhân được xây dựng bằng **React + Vite**, **Node.js + Express** và lưu trữ dữ liệu bằng **JSON**. Người dùng có thể quản lý ghi chú, sắp xếp theo bộ sưu tập, soạn thảo có định dạng, chèn ảnh, đính kèm tài liệu, xuất file và hẹn nhắc việc. Vùng ghi chú riêng tư được bảo vệ bằng mật khẩu và mã hóa nội dung.
 
@@ -8,21 +8,9 @@
 | Thông tin | Nội dung |
 | --- | --- |
 | Đề tài | Hệ thống quản lý ghi chú |
-| Môn học / lớp | Lập Trình Front End / CD CNTT 24 WEB C |
-| Giảng viên hướng dẫn | Nguyễn Hoàng Việt |
-| Nhóm thực hiện | HKT |
 | Repository | [NguyenKhoa206/DoAnGhiChu](https://github.com/NguyenKhoa206/DoAnGhiChu) |
-| Ngày hoàn thiện bản nộp | 10/10/2026 |
 
-## 2. Thành viên và phân công công việc
-
-| Thành viên | MSSV | Vai trò | Công việc chính |
-| --- | --- | --- | --- |
-| Trần Nguyễn Gia Huy | 0306241111 | PM / QA | Lập kế hoạch, viết và thực hiện test case, ghi lỗi, kiểm thử lại, tổng hợp báo cáo và slide. |
-| Nguyễn Vũ Anh Khoa | 0306241119 | Frontend Developer | Giao diện, trình soạn thảo, kết nối API, responsive và sửa lỗi FE. |
-| Ngô Văn Thân | 0306241151 | Backend Developer | API, lưu trữ JSON, xác thực riêng tư, xử lý lỗi BE và hướng dẫn cài đặt. |
-
-## 3. Mục tiêu và phạm vi
+## 2. Mục tiêu và phạm vi
 
 - Cung cấp một nơi lưu ghi chú, tài liệu và thông tin cá nhân dễ sử dụng.
 - Hỗ trợ tổ chức ghi chú theo bộ sưu tập, tìm kiếm, ghim và đánh dấu yêu thích.
@@ -33,7 +21,7 @@
 
 Mỗi backend phục vụ **một sổ tay cá nhân**. Phiên bản hiện tại chưa triển khai hệ thống nhiều tài khoản hoặc chia sẻ ghi chú giữa người dùng.
 
-## 4. Công nghệ sử dụng
+## 3. Công nghệ sử dụng
 
 | Thành phần | Công nghệ / thư viện | Vai trò |
 | --- | --- | --- |
@@ -53,7 +41,7 @@ Mỗi backend phục vụ **một sổ tay cá nhân**. Phiên bản hiện tạ
 
 Frontend gửi yêu cầu đến API của backend. Backend phân chia xử lý trong các thư mục `routes`, `middleware`, `controllers` và `utils`, sau đó đọc hoặc ghi file JSON. Nội dung ghi chú riêng tư được mã hóa tại trình duyệt trước khi gửi lên backend.
 
-## 5. Chức năng chính
+## 4. Chức năng chính
 
 | Nhóm chức năng | Nội dung |
 | --- | --- |
@@ -94,7 +82,7 @@ Mỗi ghi chú thường thuộc một bộ sưu tập hoặc ở trạng thái 
 
 Nếu lưu không thành công, nội dung và lựa chọn trong trình soạn thảo được giữ để thử lại. Bộ sưu tập đích bị xóa sẽ được báo lỗi để chọn thư mục khác. Ghi chú riêng tư được quản lý trong vùng mã hóa riêng và không có bộ chọn thư mục thường.
 
-## 6. Yêu cầu môi trường
+## 5. Yêu cầu môi trường
 
 - **Node.js 22.12 trở lên**; môi trường kiểm tra của nhóm sử dụng Node.js **24.19.0**.
 - npm đi kèm Node.js; môi trường kiểm tra sử dụng npm **11.9.0**.
@@ -110,7 +98,7 @@ node -v
 npm -v
 ```
 
-## 7. Cài đặt và chạy dự án
+## 6. Cài đặt và chạy dự án
 
 ### Bước 1 — Tải mã nguồn
 
@@ -166,7 +154,7 @@ Mở **http://localhost:5173** để sử dụng ứng dụng. Nếu Vite chọn
 
 Khi đổi mật khẩu, ứng dụng mã hóa lại cả ghi chú và thùng rác riêng tư bằng mật khẩu mới.
 
-## 8. Cấu hình môi trường
+## 7. Cấu hình môi trường
 
 Các file `.env.example` cung cấp cấu hình mẫu. Có thể sao chép thành `.env` trong cùng thư mục khi cần đổi cấu hình.
 
@@ -190,9 +178,9 @@ Nếu thay đổi địa chỉ hoặc cổng backend, cập nhật biến này v
 
 Trong development, nếu chưa đặt `JWT_SECRET`, ứng dụng tạo khóa mặc định ổn định để dùng qua các lần khởi động. Khi cấu hình production, thay giá trị mẫu bằng khóa bí mật riêng đáp ứng giới hạn trên.
 
-## 9. Cấu trúc thư mục và vai trò từng file
+## 8. Cấu trúc thư mục và vai trò từng file
 
-### 9.1. Cây thư mục mã nguồn trên nhánh main
+### 8.1. Cây thư mục mã nguồn trên nhánh main
 
 Cây dưới đây liệt kê đầy đủ **106 file đang được Git quản lý**, tính từ thư mục gốc `DoAnGhiChu`. Dữ liệu tạo lúc chạy được mô tả riêng ở mục 9.4.
 
@@ -330,14 +318,14 @@ DoAnGhiChu/
 └── README.md
 ```
 
-### 9.2. Vai trò từng file ở thư mục gốc
+### 8.2. Vai trò từng file ở thư mục gốc
 
 | File | Tác dụng |
 | --- | --- |
 | `.gitignore` | Quy định các tệp Git bỏ qua: thư viện cài bằng npm, bản build, cấu hình riêng, dữ liệu sổ tay và kết quả kiểm thử. |
 | `README.md` | Tài liệu giới thiệu đồ án HKT, thành viên, chức năng, cài đặt, cấu trúc mã nguồn, API, kiểm thử và hướng dẫn bàn giao. |
 
-### 9.3. Vai trò từng file mã nguồn
+### 8.3. Vai trò từng file mã nguồn
 
 Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` định dạng thành phần tương ứng; `.js` chứa cấu hình, kết nối API, nghiệp vụ, tiện ích hoặc kiểm thử. Mỗi bảng ghi rõ thư mục gốc để xác định đúng file.
 
@@ -559,7 +547,7 @@ Các file `.jsx` xây dựng giao diện hoặc trạng thái React; `.css` đ�
 
 **Kiểm thử trên main:** Các test có sẵn trong `frontend/test/` và `server/test/` chạy bằng `npm test`; kết quả được trình bày ở mục 14. Cấu hình và lệnh E2E còn sót đã được dọn vì thư mục test trình duyệt không còn trong repo. Các lượt UI ghi nhận trước đây là những đợt kiểm tra riêng, không phải một bộ E2E được đóng gói trên main.
 
-### 9.4. Cây dữ liệu backend tạo khi chạy
+### 8.4. Cây dữ liệu backend tạo khi chạy
 
 Với cấu hình mặc định, dữ liệu được lưu trong `Note/server/data/`. Có thể đổi nơi lưu sổ tay bằng `NOTEAPP_DATA_DIR`. Cây sau mô tả các file có thể xuất hiện khi sử dụng các chức năng; không phải tất cả đều được tạo ngay ở lần khởi động đầu tiên.
 
@@ -594,7 +582,7 @@ Note/server/data/
 
 Các API danh sách trả về `[]` khi file dữ liệu tương ứng chưa tồn tại hoặc rỗng. Backend tạo thư mục/file cần thiết khi khởi tạo hoặc ghi dữ liệu. File JSON có nội dung sai cú pháp được báo lỗi để người dùng có thể sửa hoặc phục hồi từ bản sao lưu.
 
-### 9.5. Tệp và thư mục phát sinh trên máy chạy
+### 8.5. Tệp và thư mục phát sinh trên máy chạy
 
 | Đường dẫn | Tác dụng |
 | --- | --- |
@@ -605,7 +593,7 @@ Các API danh sách trả về `[]` khi file dữ liệu tương ứng chưa t�
 
 Để tìm nơi chỉnh sửa một chức năng: bắt đầu ở `pages/` hoặc `components/`, xem API trong `services/`, rồi đối chiếu `routes/`, `controllers/` và `utils/` bên backend. Các file CSS cùng tên điều chỉnh giao diện của trang/component đó.
 
-## 10. Dữ liệu và sao lưu
+## 9. Dữ liệu và sao lưu
 
 Ứng dụng mặc định lưu tại **`Note/server/data/`**. Nếu đặt `NOTEAPP_DATA_DIR`, dữ liệu được lưu tại đường dẫn đã cấu hình.
 
@@ -635,7 +623,7 @@ Nếu chỉ có một sổ tay trong cấu trúc cũ `data/users/`, ứng dụng
 
 Hai bộ sưu tập cũ có mã `hoc` và `y-tuong`, nếu chưa có tên hiển thị được lưu, sẽ hiện **Học** và **Ý tưởng**. Các tên cũ khác chỉ còn mã không dấu cần được người dùng đổi tên có dấu một lần. Tên đã lưu luôn được ưu tiên.
 
-## 11. Quy tắc nhập liệu và bảo mật riêng tư
+## 10. Quy tắc nhập liệu và bảo mật riêng tư
 
 | Nội dung | Quy tắc |
 | --- | --- |
@@ -651,7 +639,7 @@ Hai bộ sưu tập cũ có mã `hoc` và `y-tuong`, nếu chưa có tên hiển
 
 Lỗi nhập liệu bị kiểm tra ở cả frontend và backend. Vùng ghi chú thường vẫn sử dụng được khi vùng riêng tư đang bị khóa.
 
-## 12. Hướng dẫn hẹn nhắc việc
+## 11. Hướng dẫn hẹn nhắc việc
 
 1. Mở hoặc tạo một ghi chú.
 2. Chọn tab **Thêm**, tìm phần **Hẹn nhắc việc**.
@@ -665,7 +653,7 @@ Giờ nhập được hiểu theo múi giờ trên máy người dùng và lưu 
 
 Nhận nhắc đúng giờ yêu cầu **ứng dụng đang mở và backend hoạt động**. Nếu ứng dụng đóng, các lịch quá giờ chưa được nhắc sẽ được bắt kịp khi mở lại. Bảng nhắc trong app vẫn hoạt động khi quyền thông báo máy tính bị từ chối. Lời nhắc riêng tư dùng thông tin chung và yêu cầu mở khóa trước khi xem nội dung.
 
-## 13. API chính
+## 12. API chính
 
 URL gốc mặc định: **`http://localhost:5000/api`**.
 
@@ -705,7 +693,7 @@ Các API quản lý ghi chú và hồ sơ thông thường sử dụng sổ tay 
 
 Gửi `"topicSlug": ""` để chuyển về Chưa phân loại; không gửi trường này nếu chỉ cập nhật nội dung và giữ nơi lưu. Đích phải là bộ sưu tập còn tồn tại. Có thể gửi đồng thời tiêu đề, nội dung và các thuộc tính khác trong cùng yêu cầu. Backend trả ghi chú đã lưu với `topicSlug` mới; lỗi nhập liệu/đích thiếu/trùng ID lần lượt trả 400/404/409.
 
-## 14. Kiểm thử và tạo bản build
+## 13. Kiểm thử và tạo bản build
 
 ### Kiểm thử backend
 
@@ -769,13 +757,7 @@ Kiểm tra giao diện đạt **12/12 lượt**: 6 kịch bản chạy trên des
 - Hẹn giờ, đổi/hủy lịch, chống thông báo lặp và nhắc riêng tư.
 - Giao diện ở kích thước desktop và mobile mô phỏng.
 
-### Kiểm tra bổ sung trên máy thật
-
-Tiếp tục kiểm tra bằng UniKey/EVKey trên Windows, mở DOCX/TXT bằng Word/Notepad, popup thông báo hệ điều hành, khóa đủ 10 phút theo đồng hồ thật và thiết bị điện thoại thực tế. Kiểm tra tự động bằng IME hoặc quyền thông báo mô phỏng chưa thay thế các bước này.
-
-Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm hoặc `NOTEAPP_DATA_DIR`; không xóa dữ liệu đang sử dụng.
-
-## 15. Các lỗi và vấn đề đã khắc phục
+## 14. Các lỗi và vấn đề đã khắc phục
 
 | Nhóm | Nội dung đã xử lý |
 | --- | --- |
@@ -795,30 +777,5 @@ Khi kiểm tra thiếu dữ liệu hoặc JSON trắng, dùng dữ liệu tạm 
 | Phụ thuộc | Khai báo sanitize-html để cài đặt backend đầy đủ từ package-lock.json |
 | Dọn mã nguồn | Bỏ cấu hình/lệnh E2E còn sót, ảnh kcj.jpg và ba hàm định dạng không dùng; đổi tên bg.webp cho khớp định dạng WebP, sửa đường dẫn logo/icon và cập nhật cây thư mục theo source hiện tại |
 
-## 16. Xử lý lỗi thường gặp
 
-| Hiện tượng | Cách xử lý |
-| --- | --- |
-| Không tải được ghi chú hoặc báo lỗi kết nối | Kiểm tra terminal backend và mở `/api/health`; kiểm tra VITE_API_BASE_URL |
-| Cannot find module, gồm sanitize-html | Chạy `npm ci` trong `Note/server`; frontend cài riêng trong `Note/frontend` |
-| Lỗi phiên bản Node.js / Vite | Kiểm tra `node -v`; dùng Node.js đáp ứng yêu cầu ở mục 6 |
-| Cổng 5000 đã được sử dụng | Dừng tiến trình đang dùng cổng hoặc đổi PORT và URL API tương ứng |
-| Frontend dùng cổng khác 5173 | Mở địa chỉ Vite in trong terminal |
-| Không mở được vùng riêng tư | Kiểm tra mật khẩu, trạng thái khóa và truy cập bằng localhost/HTTPS |
-| Tên bộ sưu tập cũ không có dấu | Cập nhật mã nguồn, khởi động lại app; nếu tên không dấu đã được lưu, dùng nút quản lý để đổi tên có dấu |
-| Không tạo được bộ sưu tập Nhật ký | Cập nhật nhánh main và khởi động lại backend, tải lại frontend; tạo bằng nút Tạo bộ sưu tập mới. Nếu tên đã tồn tại, dùng bộ sưu tập đó hoặc đổi sang tên khác |
-| Không gõ được tiếng Việt | Kiểm tra bảng mã Unicode, kiểu gõ Telex/VNI và chỉ dùng một bộ gõ; cập nhật mã nguồn rồi tải lại trang |
-| Không có popup nhắc việc | Giữ app/backend hoạt động, kiểm tra quyền Notification; xem bảng nhắc trong app |
-| Thay đổi biến môi trường chưa có hiệu lực | Khởi động lại tiến trình; frontend cần build lại nếu dùng bản build |
-| File JSON có nội dung nhưng sai cú pháp | Sao lưu, kiểm tra và sửa JSON; không ghi đè bằng file rỗng |
 
-## 17. Chuẩn bị bản nộp
-
-1. Giữ mã nguồn frontend/backend, `package.json`, `package-lock.json`, `.env.example` và README.
-2. Chuẩn bị báo cáo test case, danh sách lỗi đã sửa và slide thuyết trình theo yêu cầu môn học.
-3. Loại `node_modules`, `dist`, file `.env` chứa khóa thật và dữ liệu cá nhân khỏi gói mã nguồn.
-4. Nếu cần dữ liệu minh họa, dùng bộ dữ liệu mẫu riêng và ghi rõ cách sử dụng.
-5. Giải nén gói nộp ở thư mục mới, chạy `npm ci` cho cả hai phần và kiểm tra luồng người dùng mới.
-6. Kiểm tra các đường dẫn cài đặt, quyền mở repository và thông tin thành viên trước khi nộp.
-
-**Nhóm HKT — Trần Nguyễn Gia Huy, Nguyễn Vũ Anh Khoa, Ngô Văn Thân.**
