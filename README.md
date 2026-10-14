@@ -3,7 +3,7 @@
 Ứng dụng sổ tay cá nhân được xây dựng bằng **React + Vite**, **Node.js + Express** và lưu trữ dữ liệu bằng **JSON**. Người dùng có thể quản lý ghi chú, sắp xếp theo bộ sưu tập, soạn thảo có định dạng, chèn ảnh, đính kèm tài liệu, xuất file và hẹn nhắc việc. Vùng ghi chú riêng tư được bảo vệ bằng mật khẩu và mã hóa nội dung.
 
 
-## 1. Thông tin đồ án
+## 1. Thông tin 
 
 | Thông tin | Nội dung |
 | --- | --- |
